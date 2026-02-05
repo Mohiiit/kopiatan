@@ -32,6 +32,6 @@ pub mod wasm;
 pub use actions::{GameAction, GameEvent, TradeOffer};
 pub use board::{Board, EdgeBuilding, Harbor, PlayerId, Resource, Tile, TileType, VertexBuilding};
 pub use bot::{Bot, BotDifficulty};
-pub use game::{GameError, GamePhase, GameState, SetupPlacing};
+pub use game::{GameError, GamePhase, GameState, GameStateJson, SetupPlacing};
 pub use hex::{EdgeCoord, EdgeDirection, HexCoord, VertexCoord, VertexDirection};
 pub use player::{DevelopmentCard, Player, PlayerColor, ResourceHand};

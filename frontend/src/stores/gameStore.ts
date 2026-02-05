@@ -55,11 +55,44 @@ export function refreshState() {
   if (!game) return;
 
   try {
-    const stateJson = game.getState();
-    const state = JSON.parse(stateJson);
+    // Build state from individual getters since getState() has serialization issues with HashMap keys
+    const currentPlayer = game.getCurrentPlayer();
+    const phase = game.getPhase();
+
+    // Get players array by fetching each player
+    const players: any[] = [];
+    for (let i = 0; i < 4; i++) {
+      try {
+        const playerJson = game.getPlayer(i);
+        if (playerJson && playerJson !== "null") {
+          players.push(JSON.parse(playerJson));
+        }
+      } catch {
+        break; // No more players
+      }
+    }
+
+    // Get board (individual components work even if full state doesn't serialize)
+    let board = null;
+    try {
+      const boardJson = game.getBoard();
+      if (boardJson && boardJson !== "{}") {
+        board = JSON.parse(boardJson);
+      }
+    } catch {
+      // Board serialization might fail due to HashMap keys
+    }
+
+    const state = {
+      players,
+      board,
+      currentPlayer,
+      phase
+    };
+
     setStore("state", state);
-    setStore("currentPlayer", game.getCurrentPlayer());
-    setStore("phase", game.getPhase());
+    setStore("currentPlayer", currentPlayer);
+    setStore("phase", phase);
 
     const actionsJson = game.getValidActions();
     setStore("validActions", JSON.parse(actionsJson));

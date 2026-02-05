@@ -75,7 +75,8 @@ export const Lobby: Component<LobbyProps> = (props) => {
 
   function handleStartGame() {
     startGame();
-    props.onGameStart();
+    // Note: The onGameStart callback is triggered by the multiplayerStore
+    // when it receives the GameStarted message from the server
   }
 
   function handleSendChat(e: Event) {

@@ -693,6 +693,83 @@ impl Board {
         visited.remove(&current);
         1 + max_continuation
     }
+
+    /// Convert to a JSON-friendly representation with arrays instead of HashMaps
+    /// This is needed because JSON doesn't support complex types as keys
+    pub fn to_json_friendly(&self) -> BoardJson {
+        BoardJson {
+            tiles: self.tiles.iter().map(|(coord, tile)| TileJson {
+                q: coord.q,
+                r: coord.r,
+                tile_type: tile.tile_type,
+                dice_number: tile.dice_number,
+                has_robber: tile.has_robber,
+            }).collect(),
+            vertices: self.vertices.iter().filter_map(|(coord, building)| {
+                if *building == VertexBuilding::Empty {
+                    None
+                } else {
+                    Some(VertexJson {
+                        hex_q: coord.hex.q,
+                        hex_r: coord.hex.r,
+                        direction: coord.direction,
+                        building: *building,
+                    })
+                }
+            }).collect(),
+            edges: self.edges.iter().filter_map(|(coord, building)| {
+                if *building == EdgeBuilding::Empty {
+                    None
+                } else {
+                    Some(EdgeJson {
+                        hex_q: coord.hex.q,
+                        hex_r: coord.hex.r,
+                        direction: coord.direction,
+                        building: *building,
+                    })
+                }
+            }).collect(),
+            harbors: self.harbors.clone(),
+            robber_q: self.robber_location.q,
+            robber_r: self.robber_location.r,
+        }
+    }
+}
+
+/// JSON-friendly board representation with arrays instead of HashMaps
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BoardJson {
+    pub tiles: Vec<TileJson>,
+    pub vertices: Vec<VertexJson>,
+    pub edges: Vec<EdgeJson>,
+    pub harbors: Vec<HarborPlacement>,
+    pub robber_q: i32,
+    pub robber_r: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TileJson {
+    pub q: i32,
+    pub r: i32,
+    pub tile_type: TileType,
+    pub dice_number: Option<u8>,
+    pub has_robber: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VertexJson {
+    pub hex_q: i32,
+    pub hex_r: i32,
+    pub direction: crate::hex::VertexDirection,
+    pub building: VertexBuilding,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EdgeJson {
+    pub hex_q: i32,
+    pub hex_r: i32,
+    pub direction: crate::hex::EdgeDirection,
+    pub building: EdgeBuilding,
 }
 
 impl Default for Board {

@@ -1,4 +1,4 @@
-import { onMount, onCleanup, createEffect, createMemo, Show } from "solid-js";
+import { onMount, onCleanup, createEffect, createMemo, Show, createSignal } from "solid-js";
 import type { Component } from "solid-js";
 import { BoardRenderer } from "../game/renderer";
 import type { VertexCoord, EdgeCoord, HexCoord } from "../types/game";
@@ -14,6 +14,8 @@ interface MultiplayerBoardProps {
 export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
   let canvasRef: HTMLCanvasElement | undefined;
   let renderer: BoardRenderer | undefined;
+  let lastDiceRoll: number[] | null = null;
+  const [showDiceAnimation, setShowDiceAnimation] = createSignal(false);
 
   // Convert board state from array format to record format for renderer
   const convertBoardState = () => {
@@ -180,6 +182,20 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
   // Re-render when state changes
   createEffect(() => {
     if (props.gameState && renderer) {
+      // Check for dice roll
+      const currentDice = props.gameState.last_dice_roll;
+      if (currentDice && currentDice.length === 2) {
+        const diceStr = JSON.stringify(currentDice);
+        const lastStr = lastDiceRoll ? JSON.stringify(lastDiceRoll) : null;
+        if (diceStr !== lastStr) {
+          // New dice roll - trigger animation
+          renderer.createDiceRollFeedback();
+          setShowDiceAnimation(true);
+          setTimeout(() => setShowDiceAnimation(false), 800);
+          lastDiceRoll = [...currentDice];
+        }
+      }
+
       renderBoard();
       updateHighlights();
     }
@@ -224,13 +240,19 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
         ref={canvasRef}
         width={800}
         height={700}
-        style={{ border: "2px solid #333" }}
+        class="game-canvas"
       />
+
+      {/* Dice roll animation overlay */}
+      <Show when={showDiceAnimation()}>
+        <div class="dice-roll-flash" />
+      </Show>
 
       {/* Overlay for status messages */}
       <div class="board-status-overlay">
         <Show when={!props.isMyTurn}>
           <div class="waiting-overlay">
+            <span class="waiting-dot" />
             <p>Waiting for {props.gameState?.players[props.currentPlayer]?.name}...</p>
           </div>
         </Show>

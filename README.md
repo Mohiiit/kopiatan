@@ -5,19 +5,19 @@ A Singapore-themed Catan game built in Rust with WebAssembly support and real-ti
 ## Screenshots
 
 ### Main Menu
-![Main Menu](screenshots/e2e-round2/01-main-menu.png)
+![Main Menu](screenshots/new-design/main-menu.png)
 
 ### Multiplayer Lobby
-![Multiplayer Lobby](screenshots/e2e-round2/04-alice-room-waiting.png)
+![Multiplayer Lobby](screenshots/new-design/alice-room-waiting.png)
 
-### Game Board
-![Game Board](screenshots/e2e-round2/10-setup-complete-bob.png)
+### Game Board - Setup Phase
+![Game Board Setup](screenshots/new-design/settlement-placement.png)
 
-### Dice Roll & Resources
-![Dice Roll](screenshots/e2e-round2/11-after-dice-roll.png)
+### Game Board - Complete Setup
+![Setup Complete](screenshots/new-design/setup-complete.png)
 
-### Robber Phase
-![Robber Phase](screenshots/e2e-round2/13-robber-move-required.png)
+### Dice Roll & Main Phase
+![Dice Roll](screenshots/new-design/after-dice-roll.png)
 
 ## Features
 
@@ -28,6 +28,7 @@ A Singapore-themed Catan game built in Rust with WebAssembly support and real-ti
 - **Map Editor**: Create custom board layouts
 - **Save/Load**: Persist game state
 - **AI Bots**: Play against computer opponents
+- **Polished UI**: Enhanced visuals with 3D-effect tiles, animated highlights, and placement feedback
 
 ## Project Structure
 

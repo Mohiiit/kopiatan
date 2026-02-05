@@ -119,9 +119,11 @@ impl WasmGame {
     }
 
     /// Get board state as JSON (for rendering)
+    /// Uses JSON-friendly representation with arrays instead of HashMaps
     #[wasm_bindgen(js_name = getBoard)]
     pub fn get_board(&self) -> String {
-        serde_json::to_string(&self.state.board).unwrap_or_else(|_| "{}".to_string())
+        let board_json = self.state.board.to_json_friendly();
+        serde_json::to_string(&board_json).unwrap_or_else(|_| "{}".to_string())
     }
 
     /// Get a specific player's state as JSON

@@ -48,10 +48,43 @@ export const Board: Component<BoardProps> = (props) => {
     const board = gameStore.state.board;
     const players = gameStore.state.players;
 
+    if (!board || !board.tiles) return;
+
+    // Convert array format from WASM to record format for renderer
+    // Tiles: array of {q, r, tile_type, dice_number, has_robber}
+    const tilesRecord: Record<string, any> = {};
+    board.tiles.forEach((tile: any) => {
+      const key = `${tile.q},${tile.r}`;
+      tilesRecord[key] = {
+        coord: { q: tile.q, r: tile.r },
+        tile_type: tile.tile_type,
+        dice_number: tile.dice_number,
+        has_robber: tile.has_robber,
+      };
+    });
+
+    // Vertices: array of {hex_q, hex_r, direction, building}
+    const verticesRecord: Record<string, any> = {};
+    if (board.vertices) {
+      board.vertices.forEach((v: any) => {
+        const key = `${v.hex_q},${v.hex_r},${v.direction}`;
+        verticesRecord[key] = v.building;
+      });
+    }
+
+    // Edges: array of {hex_q, hex_r, direction, building}
+    const edgesRecord: Record<string, any> = {};
+    if (board.edges) {
+      board.edges.forEach((e: any) => {
+        const key = `${e.hex_q},${e.hex_r},${e.direction}`;
+        edgesRecord[key] = e.building;
+      });
+    }
+
     renderer.renderBoard(
-      board.tiles,
-      board.vertices,
-      board.edges,
+      tilesRecord,
+      verticesRecord,
+      edgesRecord,
       players
     );
   }

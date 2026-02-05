@@ -2046,6 +2046,173 @@ header p {
 }
 
 /* ============================================
+   Game Board Styles
+   ============================================ */
+.multiplayer-board-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.game-canvas {
+  border-radius: var(--radius-lg);
+  border: 3px solid var(--color-bg-elevated);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 0 100px rgba(0, 0, 0, 0.3);
+  transition: box-shadow var(--transition-slow);
+}
+
+.game-canvas:hover {
+  box-shadow:
+    var(--shadow-lg),
+    0 0 40px rgba(13, 27, 42, 0.8),
+    inset 0 0 100px rgba(0, 0, 0, 0.3);
+}
+
+/* Dice roll flash effect */
+.dice-roll-flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(243, 156, 18, 0.4) 0%, transparent 70%);
+  pointer-events: none;
+  animation: diceFlash 800ms ease-out forwards;
+  z-index: 10;
+}
+
+@keyframes diceFlash {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2);
+  }
+}
+
+/* Board status overlay */
+.board-status-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding-bottom: var(--space-xl);
+}
+
+.board-status-overlay > * {
+  pointer-events: auto;
+}
+
+/* Waiting overlay */
+.waiting-overlay {
+  background: rgba(10, 10, 18, 0.85);
+  backdrop-filter: blur(4px);
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  animation: fadeInUp 300ms ease-out;
+}
+
+.waiting-overlay p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+.waiting-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-amber);
+  animation: waitingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes waitingPulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Steal selection overlay */
+.steal-selection {
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-coral);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 30px rgba(231, 76, 60, 0.2);
+  animation: fadeInUp 300ms ease-out;
+}
+
+.steal-selection h4 {
+  margin: 0 0 var(--space-md);
+  color: var(--color-coral);
+  font-family: var(--font-display);
+  text-align: center;
+}
+
+.victim-buttons {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.victim-btn {
+  padding: var(--space-sm) var(--space-lg);
+  background: rgba(231, 76, 60, 0.15);
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.victim-btn:hover {
+  background: rgba(231, 76, 60, 0.3);
+  border-color: var(--color-coral);
+  transform: translateY(-2px);
+}
+
+/* ============================================
    Responsive Design
    ============================================ */
 @media (max-width: 1000px) {

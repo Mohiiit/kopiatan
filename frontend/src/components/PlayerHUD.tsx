@@ -17,11 +17,13 @@ export const PlayerHUD: Component = () => {
   const [showTrade, setShowTrade] = createSignal(false);
 
   const currentPlayer = createMemo(() => {
-    if (!gameStore.state) return null;
-    return gameStore.state.players[gameStore.currentPlayer];
+    if (!gameStore.state?.players) return null;
+    const player = gameStore.state.players[gameStore.currentPlayer];
+    return player || null;
   });
 
   const phase = createMemo(() => {
+    if (!gameStore.phase) return null;
     try {
       return JSON.parse(gameStore.phase);
     } catch {
