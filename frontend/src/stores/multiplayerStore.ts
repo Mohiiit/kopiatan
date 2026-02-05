@@ -286,3 +286,9 @@ export function isMyTurn(): boolean {
 }
 
 export { store as multiplayerStore };
+
+// Debug helper
+if (typeof window !== 'undefined') {
+  (window as any).__ms = store;
+  (window as any).__sa = sendGameAction;
+}

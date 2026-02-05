@@ -1,6 +1,6 @@
 //! Game room management.
 
-use catan_core::{GameAction, GameEvent, GameState};
+use catan_core::{GameAction, GameEvent, GamePhase, GameState};
 use std::collections::HashMap;
 use thiserror::Error;
 use uuid::Uuid;
@@ -188,7 +188,9 @@ impl GameRoom {
         let game_index = player.game_index.ok_or(RoomError::PlayerNotInRoom)?;
 
         // Check if it's this player's turn
-        if game.current_player != game_index {
+        // Exception: During DiscardRequired phase, any player in players_remaining can act
+        let is_discard_phase = matches!(game.phase, GamePhase::DiscardRequired { .. });
+        if !is_discard_phase && game.current_player != game_index {
             return Err(RoomError::NotYourTurn);
         }
 
@@ -209,7 +211,10 @@ impl GameRoom {
     }
 
     pub fn get_game_state(&self) -> Option<serde_json::Value> {
-        self.game.as_ref().map(|g| serde_json::to_value(g).unwrap())
+        self.game.as_ref().map(|g| {
+            // Use JSON-friendly representation to avoid HashMap serialization issues
+            serde_json::to_value(g.to_json_friendly()).unwrap()
+        })
     }
 
     pub fn get_valid_actions(&self) -> Option<Vec<serde_json::Value>> {

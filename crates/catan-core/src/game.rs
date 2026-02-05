@@ -127,6 +127,22 @@ pub enum TradeResponse {
     Rejected,
 }
 
+/// JSON-friendly game state representation
+/// Uses BoardJson instead of Board to avoid HashMap serialization issues
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameStateJson {
+    pub board: crate::board::BoardJson,
+    pub players: Vec<Player>,
+    pub current_player: PlayerId,
+    pub phase: GamePhase,
+    pub turn_number: u32,
+    pub dice_roll: Option<(u8, u8)>,
+    pub dev_card_deck_size: usize,
+    pub pending_trade: Option<TradeState>,
+    /// Total victory points for each player (computed, includes buildings)
+    pub victory_points: Vec<u32>,
+}
+
 /// The complete game state
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameState {
@@ -255,6 +271,27 @@ impl GameState {
             Some(winner)
         } else {
             None
+        }
+    }
+
+    /// Convert to a JSON-friendly representation with arrays instead of HashMaps
+    /// This is needed because JSON doesn't support complex types as keys
+    pub fn to_json_friendly(&self) -> GameStateJson {
+        // Compute victory points for each player
+        let victory_points = (0..self.players.len() as PlayerId)
+            .map(|id| self.total_victory_points(id))
+            .collect();
+
+        GameStateJson {
+            board: self.board.to_json_friendly(),
+            players: self.players.clone(),
+            current_player: self.current_player,
+            phase: self.phase.clone(),
+            turn_number: self.turn_number,
+            dice_roll: self.dice_roll,
+            dev_card_deck_size: self.dev_card_deck.len(),
+            pending_trade: self.pending_trade.clone(),
+            victory_points,
         }
     }
 

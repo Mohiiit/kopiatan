@@ -4,12 +4,15 @@ import { PlayerHUD } from "./components/PlayerHUD";
 import { Lobby } from "./components/Lobby";
 import { MapEditor } from "./components/MapEditor";
 import { StatsPanel } from "./components/StatsPanel";
+import { MultiplayerBoard } from "./components/MultiplayerBoard";
+import { MultiplayerHUD } from "./components/MultiplayerHUD";
 import { gameStore, initializeGame, isFinished, getWinner, getVictoryPoints } from "./stores/gameStore";
 import {
   multiplayerStore,
   setEventHandlers,
   sendGameAction,
   isMyTurn,
+  getMyPlayerIndex,
 } from "./stores/multiplayerStore";
 import "./App.css";
 
@@ -25,6 +28,7 @@ function App() {
     "Player 4",
   ]);
 
+
   // Set up multiplayer event handlers
   setEventHandlers({
     onGameStarted: () => {
@@ -38,8 +42,12 @@ function App() {
   async function startSinglePlayer() {
     const count = playerCount();
     const names = playerNames().slice(0, count);
-    await initializeGame(count, names);
-    setMode("singleplayer");
+    try {
+      await initializeGame(count, names);
+      setMode("singleplayer");
+    } catch (e) {
+      console.error("Error starting game:", e);
+    }
   }
 
   function updatePlayerName(index: number, name: string) {
@@ -185,22 +193,24 @@ function App() {
 
             <div class="all-players">
               <h3>All Players</h3>
-              {gameStore.state?.players.map((player: any, i: number) => (
-                <div
-                  class={`player-summary ${
-                    i === gameStore.currentPlayer ? "current" : ""
-                  }`}
-                >
-                  <span
-                    class="color-dot"
-                    style={{
-                      "background-color": getPlayerColorCSS(player.color),
-                    }}
-                  />
-                  <span class="name">{player.name}</span>
-                  <span class="vp">{getVictoryPoints(i)} VP</span>
-                </div>
-              ))}
+              <Show when={gameStore.state?.players}>
+                {(players) => players().map((player: any, i: number) => (
+                  <div
+                    class={`player-summary ${
+                      i === gameStore.currentPlayer ? "current" : ""
+                    }`}
+                  >
+                    <span
+                      class="color-dot"
+                      style={{
+                        "background-color": getPlayerColorCSS(player.color),
+                      }}
+                    />
+                    <span class="name">{player.name}</span>
+                    <span class="vp">{getVictoryPoints(i)} VP</span>
+                  </div>
+                ))}
+              </Show>
             </div>
           </div>
         </div>
@@ -225,6 +235,7 @@ function App() {
               validActions={multiplayerStore.validActions}
               currentPlayer={multiplayerStore.currentPlayer}
               isMyTurn={isMyTurn()}
+              myPlayerIndex={getMyPlayerIndex()}
               onAction={handleMultiplayerAction}
             />
 
@@ -234,105 +245,12 @@ function App() {
                 <button onClick={() => setMode("menu")}>Back to Menu</button>
               </div>
             </Show>
-
-            <div class="all-players">
-              <h3>All Players</h3>
-              {multiplayerStore.gameState?.players.map(
-                (player: any, i: number) => (
-                  <div
-                    class={`player-summary ${
-                      i === multiplayerStore.currentPlayer ? "current" : ""
-                    }`}
-                  >
-                    <span
-                      class="color-dot"
-                      style={{
-                        "background-color": getPlayerColorCSS(player.color),
-                      }}
-                    />
-                    <span class="name">{player.name}</span>
-                    <span class="vp">{player.victory_points || 0} VP</span>
-                  </div>
-                )
-              )}
-            </div>
           </div>
         </div>
       </Show>
 
-      <Show when={gameStore.isLoading}>
+      <Show when={gameStore.isLoading && mode() === "singleplayer"}>
         <div class="loading">Loading game...</div>
-      </Show>
-    </div>
-  );
-}
-
-// Simplified multiplayer board component (reuses single-player logic but with multiplayer store)
-function MultiplayerBoard(props: {
-  gameState: any;
-  validActions: any[];
-  currentPlayer: number;
-  isMyTurn: boolean;
-  onAction: (action: any) => void;
-}) {
-  // For now, we'll render a simplified version
-  // Full implementation would mirror the Board component but use multiplayer state
-  return (
-    <div class="multiplayer-board">
-      <canvas width={800} height={700} style={{ border: "2px solid #333", background: "#1e90ff" }} />
-      <div class="board-overlay">
-        <p>Multiplayer board view</p>
-        <p>Current turn: Player {props.currentPlayer + 1}</p>
-        <p>{props.isMyTurn ? "Your turn!" : "Waiting for other player..."}</p>
-      </div>
-    </div>
-  );
-}
-
-// Simplified multiplayer HUD
-function MultiplayerHUD(props: {
-  gameState: any;
-  validActions: any[];
-  currentPlayer: number;
-  isMyTurn: boolean;
-  onAction: (action: any) => void;
-}) {
-  const canRoll = () => props.validActions.some((a: any) => a === "RollDice");
-  const canEndTurn = () => props.validActions.some((a: any) => a === "EndTurn");
-
-  return (
-    <div class="player-hud">
-      <Show when={props.gameState}>
-        <div class="player-info">
-          <h2>
-            {props.gameState.players[props.currentPlayer]?.name}'s Turn
-          </h2>
-          <p class="turn-indicator">
-            {props.isMyTurn ? "Your turn!" : "Waiting..."}
-          </p>
-        </div>
-
-        <Show when={props.isMyTurn}>
-          <div class="actions">
-            <Show when={canRoll()}>
-              <button
-                onClick={() => props.onAction("RollDice")}
-                class="action-btn primary"
-              >
-                🎲 Roll Dice
-              </button>
-            </Show>
-
-            <Show when={canEndTurn()}>
-              <button
-                onClick={() => props.onAction("EndTurn")}
-                class="action-btn secondary"
-              >
-                ⏭️ End Turn
-              </button>
-            </Show>
-          </div>
-        </Show>
       </Show>
     </div>
   );
