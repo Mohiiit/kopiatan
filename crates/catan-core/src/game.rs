@@ -244,6 +244,20 @@ impl GameState {
         vp
     }
 
+    /// Check if the game is finished
+    pub fn is_finished(&self) -> bool {
+        matches!(self.phase, GamePhase::Finished { .. })
+    }
+
+    /// Get the winner if the game is finished
+    pub fn get_winner(&self) -> Option<PlayerId> {
+        if let GamePhase::Finished { winner } = self.phase {
+            Some(winner)
+        } else {
+            None
+        }
+    }
+
     /// Check if any player has won
     fn check_winner(&self) -> Option<PlayerId> {
         for player in &self.players {

@@ -1,0 +1,22 @@
+[package]
+name = "catan-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+catan-core = { path = "../catan-core" }
+tokio = { version = "1.0", features = ["full"] }
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dashmap = "5.5"
+thiserror = "1.0"
+anyhow = "1.0"
+
+[[bin]]
+name = "catan-server"
+path = "src/main.rs"
