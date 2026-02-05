@@ -2,6 +2,7 @@ import { onMount, onCleanup, createEffect, createMemo, Show, createSignal } from
 import type { Component } from "solid-js";
 import { BoardRenderer } from "../game/renderer";
 import type { VertexCoord, EdgeCoord, HexCoord } from "../types/game";
+import { SoundManager } from "../utils/SoundManager";
 
 interface MultiplayerBoardProps {
   gameState: any;
@@ -58,7 +59,10 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
       });
     }
 
-    return { tiles: tilesRecord, vertices: verticesRecord, edges: edgesRecord };
+    // Harbors: array of {edge: {hex, direction}, harbor_type}
+    const harbors = board.harbors || [];
+
+    return { tiles: tilesRecord, vertices: verticesRecord, edges: edgesRecord, harbors };
   };
 
   // Extract valid placements from actions
@@ -121,6 +125,12 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
     });
 
     if (action) {
+      // Play appropriate sound for the action
+      if ("PlaceInitialSettlement" in action || "BuildSettlement" in action) {
+        SoundManager.play('placeSettlement');
+      } else if ("BuildCity" in action) {
+        SoundManager.play('placeCity');
+      }
       props.onAction(action);
     }
   }
@@ -142,6 +152,7 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
     });
 
     if (action) {
+      SoundManager.play('placeRoad');
       props.onAction(action);
     }
   }
@@ -159,6 +170,7 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
     });
 
     if (action) {
+      SoundManager.play('robberMove');
       props.onAction(action);
     }
   }
@@ -204,10 +216,10 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
   function renderBoard() {
     if (!renderer || !props.gameState) return;
 
-    const { tiles, vertices, edges } = convertBoardState();
+    const { tiles, vertices, edges, harbors } = convertBoardState();
     const players = props.gameState.players || [];
 
-    renderer.renderBoard(tiles, vertices, edges, players);
+    renderer.renderBoard(tiles, vertices, edges, players, harbors);
   }
 
   function updateHighlights() {
@@ -234,8 +246,33 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
     }
   }
 
+  // Current player color for border glow
+  const currentPlayerColor = createMemo(() => {
+    const player = props.gameState?.players?.[props.currentPlayer];
+    const colorMap: Record<string, string> = {
+      Red: "#e74c3c",
+      Blue: "#3498db",
+      Orange: "#e67e22",
+      White: "#ecf0f1",
+    };
+    return colorMap[player?.color] || "#f5a623";
+  });
+
   return (
-    <div class="multiplayer-board-container">
+    <div
+      class="multiplayer-board-container"
+      classList={{ "my-turn-active": props.isMyTurn }}
+      style={{ "--current-player-color": currentPlayerColor() }}
+    >
+      {/* Decorative corner elements */}
+      <div class="board-corner board-corner-tl" />
+      <div class="board-corner board-corner-tr" />
+      <div class="board-corner board-corner-bl" />
+      <div class="board-corner board-corner-br" />
+
+      {/* Ambient glow effect */}
+      <div class="board-ambient-glow" />
+
       <canvas
         ref={canvasRef}
         width={800}
@@ -248,24 +285,45 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
         <div class="dice-roll-flash" />
       </Show>
 
+      {/* Turn indicator strip */}
+      <div class="board-turn-strip">
+        <Show when={props.isMyTurn}>
+          <span class="turn-strip-text">Your Turn</span>
+        </Show>
+        <Show when={!props.isMyTurn}>
+          <span class="turn-strip-text waiting">
+            {props.gameState?.players[props.currentPlayer]?.name}'s Turn
+          </span>
+        </Show>
+      </div>
+
       {/* Overlay for status messages */}
       <div class="board-status-overlay">
         <Show when={!props.isMyTurn}>
           <div class="waiting-overlay">
-            <span class="waiting-dot" />
+            <div class="waiting-dots">
+              <span class="waiting-dot" />
+              <span class="waiting-dot" />
+              <span class="waiting-dot" />
+            </div>
             <p>Waiting for {props.gameState?.players[props.currentPlayer]?.name}...</p>
           </div>
         </Show>
 
         <Show when={props.isMyTurn && phaseInfo().type === "steal"}>
           <div class="steal-selection">
+            <div class="steal-icon">🦹</div>
             <h4>Choose who to steal from:</h4>
             <div class="victim-buttons">
               {(phaseInfo() as any).victims?.map((victimId: number) => (
                 <button
-                  onClick={() => props.onAction({ StealFrom: victimId })}
+                  onClick={() => {
+                    SoundManager.play('steal');
+                    props.onAction({ StealFrom: victimId });
+                  }}
                   class="victim-btn"
                 >
+                  <span class="victim-icon">👤</span>
                   {props.gameState?.players[victimId]?.name || `Player ${victimId + 1}`}
                 </button>
               ))}

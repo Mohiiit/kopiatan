@@ -1,6 +1,5 @@
 import * as PIXI from "pixi.js";
-import type { HexCoord, VertexCoord, EdgeCoord, Tile, VertexBuilding, EdgeBuilding, Player, TileType, Resource } from "../types/game";
-import { getPlayerColor } from "../types/game";
+import type { HexCoord, VertexCoord, EdgeCoord, Tile, VertexBuilding, EdgeBuilding, Player, TileType, Resource, Harbor } from "../types/game";
 
 // Hex geometry constants
 const HEX_SIZE = 50; // Radius in pixels
@@ -89,9 +88,20 @@ function getResourceSymbol(resource: Resource): string {
   return symbols[resource];
 }
 
+// Port colors
+const PORT_COLORS = {
+  Generic: { base: 0x8b4513, highlight: 0xcd853f, shadow: 0x654321 }, // Brown for generic 3:1
+  Brick: { base: 0xc0392b, highlight: 0xe74c3c, shadow: 0x922b21 },
+  Lumber: { base: 0x27ae60, highlight: 0x2ecc71, shadow: 0x1e8449 },
+  Ore: { base: 0x5d6d7e, highlight: 0x85929e, shadow: 0x34495e },
+  Grain: { base: 0xf39c12, highlight: 0xf7dc6f, shadow: 0xd68910 },
+  Wool: { base: 0xa8e6cf, highlight: 0xdcedc1, shadow: 0x88d4ab },
+};
+
 export class BoardRenderer {
   private app: PIXI.Application;
   private boardContainer: PIXI.Container;
+  private portsContainer: PIXI.Container;
   private highlightContainer: PIXI.Container;
   private buildingsContainer: PIXI.Container;
   private effectsContainer: PIXI.Container;
@@ -113,6 +123,7 @@ export class BoardRenderer {
 
     this.app = new PIXI.Application();
     this.boardContainer = new PIXI.Container();
+    this.portsContainer = new PIXI.Container();
     this.highlightContainer = new PIXI.Container();
     this.buildingsContainer = new PIXI.Container();
     this.effectsContainer = new PIXI.Container();
@@ -128,11 +139,13 @@ export class BoardRenderer {
     });
 
     this.boardContainer.position.set(this.centerOffset.x, this.centerOffset.y);
+    this.portsContainer.position.set(this.centerOffset.x, this.centerOffset.y);
     this.highlightContainer.position.set(this.centerOffset.x, this.centerOffset.y);
     this.buildingsContainer.position.set(this.centerOffset.x, this.centerOffset.y);
     this.effectsContainer.position.set(this.centerOffset.x, this.centerOffset.y);
 
     this.app.stage.addChild(this.boardContainer);
+    this.app.stage.addChild(this.portsContainer);
     this.app.stage.addChild(this.highlightContainer);
     this.app.stage.addChild(this.buildingsContainer);
     this.app.stage.addChild(this.effectsContainer);
@@ -178,9 +191,11 @@ export class BoardRenderer {
     tiles: Record<string, Tile>,
     vertices: Record<string, VertexBuilding>,
     edges: Record<string, EdgeBuilding>,
-    players: Player[]
+    players: Player[],
+    harbors?: Harbor[]
   ) {
     this.boardContainer.removeChildren();
+    this.portsContainer.removeChildren();
     this.buildingsContainer.removeChildren();
 
     // Draw ocean background gradient
@@ -190,6 +205,13 @@ export class BoardRenderer {
     Object.values(tiles).forEach((tile) => {
       this.drawTile(tile);
     });
+
+    // Draw harbors/ports
+    if (harbors && harbors.length > 0) {
+      harbors.forEach((harbor) => {
+        this.drawHarbor(harbor);
+      });
+    }
 
     // Draw edges (roads)
     Object.entries(edges).forEach(([coordStr, building]) => {
@@ -417,6 +439,127 @@ export class BoardRenderer {
     this.boardContainer.addChild(container);
   }
 
+  private drawHarbor(harbor: Harbor) {
+    const edgePos = edgeToPixel(harbor.edge, this.hexSize);
+
+    // Calculate position offset - ports should be rendered on the ocean side of the edge
+    // We'll offset the port marker outward from the board center
+    const centerDist = Math.sqrt(edgePos.x * edgePos.x + edgePos.y * edgePos.y);
+    const offsetScale = centerDist > 0 ? 35 / centerDist : 0;
+    const offsetX = edgePos.x * offsetScale;
+    const offsetY = edgePos.y * offsetScale;
+
+    const pos = {
+      x: edgePos.x + offsetX,
+      y: edgePos.y + offsetY,
+    };
+
+    const container = new PIXI.Container();
+    container.position.set(pos.x, pos.y);
+
+    // Determine harbor type and colors
+    const isGeneric = harbor.harbor_type === "Generic";
+    const resource = typeof harbor.harbor_type === "object" && "Specific" in harbor.harbor_type
+      ? harbor.harbor_type.Specific
+      : null;
+
+    const colorKey = isGeneric ? "Generic" : (resource || "Generic");
+    const colors = PORT_COLORS[colorKey as keyof typeof PORT_COLORS] || PORT_COLORS.Generic;
+
+    // Draw dock/pier connecting to edge
+    const pier = new PIXI.Graphics();
+    const pierLength = 25;
+    const angle = Math.atan2(-offsetY, -offsetX);
+    pier.moveTo(0, 0);
+    pier.lineTo(Math.cos(angle) * pierLength, Math.sin(angle) * pierLength);
+    pier.stroke({ color: 0x8b4513, width: 4 }); // Brown pier
+    container.addChild(pier);
+
+    // Draw port marker shadow
+    const shadow = new PIXI.Graphics();
+    shadow.circle(2, 2, 20);
+    shadow.fill({ color: 0x000000, alpha: 0.3 });
+    container.addChild(shadow);
+
+    // Draw port marker base (circle with ship wheel design)
+    const base = new PIXI.Graphics();
+    base.circle(0, 0, 18);
+    base.fill({ color: colors.base });
+    container.addChild(base);
+
+    // Draw inner highlight
+    const highlight = new PIXI.Graphics();
+    highlight.circle(-3, -3, 12);
+    highlight.fill({ color: colors.highlight, alpha: 0.4 });
+    container.addChild(highlight);
+
+    // Draw border
+    const border = new PIXI.Graphics();
+    border.circle(0, 0, 18);
+    border.stroke({ color: colors.shadow, width: 2 });
+    container.addChild(border);
+
+    // Draw trade ratio text
+    const ratio = isGeneric ? "3:1" : "2:1";
+    const ratioText = new PIXI.Text({
+      text: ratio,
+      style: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        fontFamily: 'Arial, sans-serif',
+        fill: 0xffffff,
+      }
+    });
+    ratioText.anchor.set(0.5);
+    ratioText.position.set(0, -5);
+    container.addChild(ratioText);
+
+    // Draw resource icon or "?" for generic
+    if (isGeneric) {
+      const questionMark = new PIXI.Text({
+        text: "?",
+        style: {
+          fontSize: 12,
+          fontWeight: 'bold',
+          fontFamily: 'Arial, sans-serif',
+          fill: 0xffffff,
+        }
+      });
+      questionMark.anchor.set(0.5);
+      questionMark.position.set(0, 6);
+      container.addChild(questionMark);
+    } else if (resource) {
+      const symbol = getResourceSymbol(resource);
+      const icon = new PIXI.Text({
+        text: symbol,
+        style: {
+          fontSize: 12,
+          fontFamily: 'system-ui',
+        }
+      });
+      icon.anchor.set(0.5);
+      icon.position.set(0, 6);
+      container.addChild(icon);
+    }
+
+    // Draw anchor icon at the pier connection point
+    const anchorX = Math.cos(angle) * (pierLength - 5);
+    const anchorY = Math.sin(angle) * (pierLength - 5);
+    const anchor = new PIXI.Graphics();
+    // Simple anchor shape
+    anchor.circle(anchorX, anchorY - 3, 3);
+    anchor.stroke({ color: 0x2c3e50, width: 2 });
+    anchor.moveTo(anchorX, anchorY);
+    anchor.lineTo(anchorX, anchorY + 6);
+    anchor.stroke({ color: 0x2c3e50, width: 2 });
+    anchor.moveTo(anchorX - 4, anchorY + 5);
+    anchor.lineTo(anchorX + 4, anchorY + 5);
+    anchor.stroke({ color: 0x2c3e50, width: 2 });
+    container.addChild(anchor);
+
+    this.portsContainer.addChild(container);
+  }
+
   private drawBuilding(coord: VertexCoord, building: VertexBuilding, players: Player[]) {
     const pos = vertexToPixel(coord, this.hexSize);
 
@@ -580,19 +723,24 @@ export class BoardRenderer {
     const pos = edgeToPixel(coord, this.hexSize);
 
     // Determine road rotation based on direction
+    // Roads should lie ALONG the hex edges, connecting adjacent vertices
+    // For a pointy-top hex, the edge angles from horizontal are:
+    // - East/West edges: vertical (PI/2)
+    // - NorthEast/SouthWest edges: PI/6 (30 degrees)
+    // - SouthEast/NorthWest edges: -PI/6 (-30 degrees)
     let rotation = 0;
     switch (coord.direction) {
       case "NorthEast":
       case "SouthWest":
-        rotation = -Math.PI / 3;
+        rotation = Math.PI / 6;
         break;
       case "East":
       case "West":
-        rotation = 0;
+        rotation = Math.PI / 2;
         break;
       case "SouthEast":
       case "NorthWest":
-        rotation = Math.PI / 3;
+        rotation = -Math.PI / 6;
         break;
     }
 
@@ -712,19 +860,20 @@ export class BoardRenderer {
       const pos = edgeToPixel(edge, this.hexSize);
       const key = JSON.stringify(edge);
 
+      // Rotation to align highlights along hex edges (same as road rotation)
       let rotation = 0;
       switch (edge.direction) {
         case "NorthEast":
         case "SouthWest":
-          rotation = -Math.PI / 3;
+          rotation = Math.PI / 6;
           break;
         case "East":
         case "West":
-          rotation = 0;
+          rotation = Math.PI / 2;
           break;
         case "SouthEast":
         case "NorthWest":
-          rotation = Math.PI / 3;
+          rotation = -Math.PI / 6;
           break;
       }
 

@@ -7,7 +7,9 @@
 //! - Harbor trading bonuses
 //! - Board validation and query methods
 
-use crate::hex::{EdgeCoord, EdgeDirection, HexCoord, VertexCoord};
+use crate::hex::{EdgeCoord, HexCoord, VertexCoord};
+use rand::seq::SliceRandom;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -247,15 +249,21 @@ impl Board {
         }
     }
 
-    /// Create the standard Catan board layout
+    /// Create the standard Catan board layout with randomized tiles and numbers
     pub fn standard() -> Self {
+        let mut rng = rand::thread_rng();
+        Self::standard_with_rng(&mut rng)
+    }
+
+    /// Create the standard Catan board layout with a provided RNG
+    /// This allows for deterministic board generation when needed
+    pub fn standard_with_rng<R: Rng>(rng: &mut R) -> Self {
         let mut board = Self::new();
 
         // Standard Catan has 19 land hexes in a specific pattern
         // Ring 0: center (1 hex)
         // Ring 1: 6 hexes
         // Ring 2: 12 hexes
-
         let land_coords: Vec<HexCoord> = vec![
             // Center
             HexCoord::new(0, 0),
@@ -281,49 +289,81 @@ impl Board {
             HexCoord::new(1, 1),
         ];
 
-        // Standard resource distribution
-        let resources = vec![
-            Resource::Ore,
-            Resource::Wool,
-            Resource::Lumber,
-            Resource::Grain,
-            Resource::Brick,
-            Resource::Wool,
-            Resource::Brick,
-            Resource::Grain,
-            Resource::Lumber,
-            Resource::Lumber,
-            Resource::Ore,
-            Resource::Lumber,
-            Resource::Ore,
-            Resource::Grain,
-            Resource::Wool,
-            Resource::Brick,
-            Resource::Grain,
-            Resource::Wool,
-            // Desert (index 18) - handled separately
+        // Standard Catan tile distribution:
+        // 4 Lumber (Wood), 4 Grain (Wheat), 4 Wool (Sheep), 3 Ore, 3 Brick, 1 Desert
+        let mut tile_types: Vec<Option<Resource>> = vec![
+            // 4 Lumber
+            Some(Resource::Lumber),
+            Some(Resource::Lumber),
+            Some(Resource::Lumber),
+            Some(Resource::Lumber),
+            // 4 Grain
+            Some(Resource::Grain),
+            Some(Resource::Grain),
+            Some(Resource::Grain),
+            Some(Resource::Grain),
+            // 4 Wool
+            Some(Resource::Wool),
+            Some(Resource::Wool),
+            Some(Resource::Wool),
+            Some(Resource::Wool),
+            // 3 Ore
+            Some(Resource::Ore),
+            Some(Resource::Ore),
+            Some(Resource::Ore),
+            // 3 Brick
+            Some(Resource::Brick),
+            Some(Resource::Brick),
+            Some(Resource::Brick),
+            // 1 Desert (represented as None)
+            None,
         ];
 
-        // Standard number tokens (spiral placement)
-        let numbers = vec![5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11];
+        // Shuffle tile types randomly
+        tile_types.shuffle(rng);
 
-        // Place tiles
-        let mut num_idx = 0;
-        for (i, coord) in land_coords.iter().enumerate() {
-            if i == 18 {
-                // Desert in the center for standard layout
-                // Actually, let's put desert at index 9 (middle of ring 2)
+        // Standard dice number distribution (one of each except 2 and 12, two of 3-6 and 8-11)
+        // Numbers: 2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12
+        let mut numbers: Vec<u8> = vec![2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
+
+        // Shuffle numbers and assign to non-desert tiles
+        // We need to avoid placing 6 and 8 adjacent to each other
+        numbers.shuffle(rng);
+
+        // Find which positions are resource tiles (not desert)
+        let mut resource_positions: Vec<usize> = Vec::new();
+        let mut desert_position: Option<usize> = None;
+
+        for (i, tile_type) in tile_types.iter().enumerate() {
+            if tile_type.is_some() {
+                resource_positions.push(i);
+            } else {
+                desert_position = Some(i);
             }
-            // For simplicity, put desert at center
-            if i == 0 {
+        }
+
+        // Try to assign numbers while avoiding 6 and 8 adjacency
+        // Use multiple attempts with reshuffling if needed
+        let number_assignment = board.assign_numbers_avoiding_adjacent_68(
+            &land_coords,
+            &resource_positions,
+            &numbers,
+            rng,
+        );
+
+        // Place tiles on the board
+        for (i, coord) in land_coords.iter().enumerate() {
+            if Some(i) == desert_position {
                 let tile = Tile::desert(*coord);
                 board.robber_location = *coord;
                 board.tiles.insert(*coord, tile);
             } else {
-                let resource = resources[i - 1];
-                let number = numbers[num_idx];
-                num_idx += 1;
-                board.tiles.insert(*coord, Tile::new_resource(*coord, resource, number));
+                let resource = tile_types[i].unwrap();
+                let resource_idx = resource_positions.iter().position(|&x| x == i).unwrap();
+                let number = number_assignment[resource_idx];
+                board
+                    .tiles
+                    .insert(*coord, Tile::new_resource(*coord, resource, number));
             }
         }
 
@@ -339,6 +379,66 @@ impl Board {
         board
     }
 
+    /// Assign dice numbers to positions while trying to avoid 6 and 8 being adjacent
+    fn assign_numbers_avoiding_adjacent_68<R: Rng>(
+        &self,
+        land_coords: &[HexCoord],
+        resource_positions: &[usize],
+        numbers: &[u8],
+        rng: &mut R,
+    ) -> Vec<u8> {
+        const MAX_ATTEMPTS: usize = 100;
+
+        for _ in 0..MAX_ATTEMPTS {
+            let mut shuffled_numbers = numbers.to_vec();
+            shuffled_numbers.shuffle(rng);
+
+            if self.is_valid_number_placement(land_coords, resource_positions, &shuffled_numbers) {
+                return shuffled_numbers;
+            }
+        }
+
+        // If we couldn't find a valid placement after many attempts,
+        // return the last shuffle (this is rare but ensures we always return something)
+        let mut shuffled_numbers = numbers.to_vec();
+        shuffled_numbers.shuffle(rng);
+        shuffled_numbers
+    }
+
+    /// Check if a number placement is valid (no adjacent 6 and 8)
+    fn is_valid_number_placement(
+        &self,
+        land_coords: &[HexCoord],
+        resource_positions: &[usize],
+        numbers: &[u8],
+    ) -> bool {
+        // Build a map from coordinate to number
+        let mut coord_to_number: HashMap<HexCoord, u8> = HashMap::new();
+
+        for (resource_idx, &position_idx) in resource_positions.iter().enumerate() {
+            let coord = land_coords[position_idx];
+            let number = numbers[resource_idx];
+            coord_to_number.insert(coord, number);
+        }
+
+        // Check each tile with 6 or 8
+        for (coord, &number) in &coord_to_number {
+            if number == 6 || number == 8 {
+                // Check all neighbors
+                for neighbor in coord.neighbors() {
+                    if let Some(&neighbor_number) = coord_to_number.get(&neighbor) {
+                        // If neighbor is also 6 or 8, invalid
+                        if neighbor_number == 6 || neighbor_number == 8 {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        true
+    }
+
     /// Get coordinates for ocean tiles surrounding the land
     fn get_ocean_ring(&self) -> Vec<HexCoord> {
         let mut ocean = HashSet::new();
@@ -352,28 +452,126 @@ impl Board {
         ocean.into_iter().collect()
     }
 
-    /// Add standard harbors to the board
+    /// Add standard harbors to the board with randomized positions
     fn add_standard_harbors(&mut self) {
-        // Standard harbors: 4 generic (3:1) and 5 specific (2:1, one per resource)
-        // Placed on coastal edges around the board
-        // For now, we'll add them in a simple pattern
+        let mut rng = rand::thread_rng();
+        self.add_standard_harbors_with_rng(&mut rng);
+    }
 
-        let harbor_configs = vec![
-            (HexCoord::new(2, -2), EdgeDirection::NorthEast, Harbor::Generic),
-            (HexCoord::new(1, -2), EdgeDirection::NorthWest, Harbor::Specific(Resource::Grain)),
-            (HexCoord::new(-1, -1), EdgeDirection::NorthWest, Harbor::Specific(Resource::Ore)),
-            (HexCoord::new(-2, 0), EdgeDirection::West, Harbor::Generic),
-            (HexCoord::new(-2, 2), EdgeDirection::SouthWest, Harbor::Specific(Resource::Wool)),
-            (HexCoord::new(-1, 2), EdgeDirection::SouthWest, Harbor::Generic),
-            (HexCoord::new(1, 1), EdgeDirection::SouthEast, Harbor::Specific(Resource::Brick)),
-            (HexCoord::new(2, 0), EdgeDirection::East, Harbor::Specific(Resource::Lumber)),
-            (HexCoord::new(2, -1), EdgeDirection::NorthEast, Harbor::Generic),
+    /// Add standard harbors with a provided RNG for deterministic placement
+    fn add_standard_harbors_with_rng<R: Rng>(&mut self, rng: &mut R) {
+        // Standard harbors: 4 generic (3:1) and 5 specific (2:1, one per resource)
+        // Randomize which coastal edges get which harbor type
+
+        // Get all valid coastal edges (edges between land and ocean)
+        let coastal_edges = self.get_coastal_edges();
+
+        // Create the harbor types we need to place
+        let mut harbor_types = vec![
+            Harbor::Generic,
+            Harbor::Generic,
+            Harbor::Generic,
+            Harbor::Generic,
+            Harbor::Specific(Resource::Brick),
+            Harbor::Specific(Resource::Lumber),
+            Harbor::Specific(Resource::Ore),
+            Harbor::Specific(Resource::Grain),
+            Harbor::Specific(Resource::Wool),
         ];
 
-        for (hex, dir, harbor_type) in harbor_configs {
-            let edge = EdgeCoord::new(hex, dir);
+        // Shuffle harbor types
+        harbor_types.shuffle(rng);
+
+        // Select 9 coastal edges that are spread around the board
+        // We want them distributed, not all clustered together
+        let selected_edges = self.select_distributed_coastal_edges(&coastal_edges, 9, rng);
+
+        // Assign harbor types to the selected edges
+        for (edge, harbor_type) in selected_edges.into_iter().zip(harbor_types.into_iter()) {
             self.harbors.push(HarborPlacement { edge, harbor_type });
         }
+    }
+
+    /// Get all coastal edges (edges that border both land and ocean)
+    fn get_coastal_edges(&self) -> Vec<EdgeCoord> {
+        let mut coastal = Vec::new();
+
+        for tile in self.tiles.values() {
+            // Only check land tiles (not ocean)
+            if matches!(tile.tile_type, TileType::Ocean) {
+                continue;
+            }
+
+            // Check each edge of this land tile
+            for edge in tile.coord.edges() {
+                let touching = edge.touching_hexes();
+                let has_land = touching.iter().any(|h| {
+                    self.tiles.get(h).is_some_and(|t| !matches!(t.tile_type, TileType::Ocean))
+                });
+                let has_ocean = touching.iter().any(|h| {
+                    self.tiles.get(h).is_some_and(|t| matches!(t.tile_type, TileType::Ocean))
+                        || !self.tiles.contains_key(h) // Outside board is also "ocean"
+                });
+
+                if has_land && has_ocean && !coastal.contains(&edge) {
+                    coastal.push(edge);
+                }
+            }
+        }
+
+        coastal
+    }
+
+    /// Select n coastal edges that are well-distributed around the board
+    fn select_distributed_coastal_edges<R: Rng>(
+        &self,
+        coastal_edges: &[EdgeCoord],
+        count: usize,
+        rng: &mut R,
+    ) -> Vec<EdgeCoord> {
+        if coastal_edges.len() <= count {
+            return coastal_edges.to_vec();
+        }
+
+        let mut selected: Vec<EdgeCoord> = Vec::new();
+        let mut available: Vec<EdgeCoord> = coastal_edges.to_vec();
+        available.shuffle(rng);
+
+        while selected.len() < count && !available.is_empty() {
+            // Find edges that are sufficiently far from already selected ones
+            let mut best_candidate: Option<(usize, f64)> = None;
+
+            for (idx, candidate) in available.iter().enumerate() {
+                if selected.is_empty() {
+                    best_candidate = Some((idx, f64::MAX));
+                    break;
+                }
+
+                // Calculate minimum distance to any selected edge
+                let min_dist = selected.iter()
+                    .map(|s| self.edge_distance(candidate, s))
+                    .fold(f64::MAX, f64::min);
+
+                if best_candidate.is_none() || min_dist > best_candidate.unwrap().1 {
+                    best_candidate = Some((idx, min_dist));
+                }
+            }
+
+            if let Some((idx, _)) = best_candidate {
+                selected.push(available.remove(idx));
+            } else {
+                break;
+            }
+        }
+
+        selected
+    }
+
+    /// Calculate approximate distance between two edges using their pixel positions
+    fn edge_distance(&self, e1: &EdgeCoord, e2: &EdgeCoord) -> f64 {
+        let (x1, y1) = e1.to_pixel(1.0);
+        let (x2, y2) = e2.to_pixel(1.0);
+        ((x2 - x1).powi(2) + (y2 - y1).powi(2)).sqrt()
     }
 
     // ==================== Query Methods ====================
@@ -975,5 +1173,230 @@ mod tests {
 
         let player_harbors = board.player_harbors(0);
         assert!(!player_harbors.is_empty());
+    }
+
+    #[test]
+    fn test_standard_board_has_correct_resource_counts() {
+        let board = Board::standard();
+
+        let mut lumber_count = 0;
+        let mut grain_count = 0;
+        let mut wool_count = 0;
+        let mut ore_count = 0;
+        let mut brick_count = 0;
+        let mut desert_count = 0;
+
+        for tile in board.land_tiles() {
+            match tile.tile_type {
+                TileType::Resource(Resource::Lumber) => lumber_count += 1,
+                TileType::Resource(Resource::Grain) => grain_count += 1,
+                TileType::Resource(Resource::Wool) => wool_count += 1,
+                TileType::Resource(Resource::Ore) => ore_count += 1,
+                TileType::Resource(Resource::Brick) => brick_count += 1,
+                TileType::Desert => desert_count += 1,
+                TileType::Ocean => {}
+            }
+        }
+
+        assert_eq!(lumber_count, 4, "Should have 4 Lumber tiles");
+        assert_eq!(grain_count, 4, "Should have 4 Grain tiles");
+        assert_eq!(wool_count, 4, "Should have 4 Wool tiles");
+        assert_eq!(ore_count, 3, "Should have 3 Ore tiles");
+        assert_eq!(brick_count, 3, "Should have 3 Brick tiles");
+        assert_eq!(desert_count, 1, "Should have 1 Desert tile");
+    }
+
+    #[test]
+    fn test_standard_board_has_correct_number_distribution() {
+        let board = Board::standard();
+
+        let mut number_counts: std::collections::HashMap<u8, u32> = std::collections::HashMap::new();
+
+        for tile in board.land_tiles() {
+            if let Some(num) = tile.dice_number {
+                *number_counts.entry(num).or_insert(0) += 1;
+            }
+        }
+
+        // Standard distribution: 2(1), 3(2), 4(2), 5(2), 6(2), 8(2), 9(2), 10(2), 11(2), 12(1)
+        // Total: 18 numbers for 18 resource tiles
+        assert_eq!(number_counts.get(&2), Some(&1), "Should have one 2");
+        assert_eq!(number_counts.get(&3), Some(&2), "Should have two 3s");
+        assert_eq!(number_counts.get(&4), Some(&2), "Should have two 4s");
+        assert_eq!(number_counts.get(&5), Some(&2), "Should have two 5s");
+        assert_eq!(number_counts.get(&6), Some(&2), "Should have two 6s");
+        assert_eq!(number_counts.get(&7), None, "Should have no 7s");
+        assert_eq!(number_counts.get(&8), Some(&2), "Should have two 8s");
+        assert_eq!(number_counts.get(&9), Some(&2), "Should have two 9s");
+        assert_eq!(number_counts.get(&10), Some(&2), "Should have two 10s");
+        assert_eq!(number_counts.get(&11), Some(&2), "Should have two 11s");
+        assert_eq!(number_counts.get(&12), Some(&1), "Should have one 12");
+    }
+
+    #[test]
+    fn test_no_adjacent_6_and_8() {
+        // Run multiple times to test randomization
+        for _ in 0..10 {
+            let board = Board::standard();
+
+            // Build a map of coordinates to dice numbers
+            let coord_to_number: std::collections::HashMap<HexCoord, u8> = board
+                .land_tiles()
+                .filter_map(|tile| tile.dice_number.map(|num| (tile.coord, num)))
+                .collect();
+
+            // Check that no 6 is adjacent to an 8
+            for (coord, &number) in &coord_to_number {
+                if number == 6 || number == 8 {
+                    for neighbor in coord.neighbors() {
+                        if let Some(&neighbor_number) = coord_to_number.get(&neighbor) {
+                            assert!(
+                                !(number == 6 && neighbor_number == 8)
+                                    && !(number == 8 && neighbor_number == 6),
+                                "Found adjacent 6 and 8 at {:?} and {:?}",
+                                coord,
+                                neighbor
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_board_randomization_produces_different_boards() {
+        // Generate multiple boards and verify they're different
+        let board1 = Board::standard();
+        let board2 = Board::standard();
+
+        // Collect tile types for each board
+        let tiles1: Vec<_> = board1
+            .land_tiles()
+            .map(|t| (t.coord, t.tile_type, t.dice_number))
+            .collect();
+        let tiles2: Vec<_> = board2
+            .land_tiles()
+            .map(|t| (t.coord, t.tile_type, t.dice_number))
+            .collect();
+
+        // They should be different (extremely unlikely to be the same by chance)
+        // But we need to be careful - they could theoretically be the same
+        // So we generate more boards and check that at least some are different
+        let mut found_different = tiles1 != tiles2;
+
+        if !found_different {
+            for _ in 0..10 {
+                let board3 = Board::standard();
+                let tiles3: Vec<_> = board3
+                    .land_tiles()
+                    .map(|t| (t.coord, t.tile_type, t.dice_number))
+                    .collect();
+                if tiles3 != tiles1 {
+                    found_different = true;
+                    break;
+                }
+            }
+        }
+
+        assert!(
+            found_different,
+            "Board generation should produce different boards"
+        );
+    }
+
+    #[test]
+    fn test_desert_has_no_number() {
+        let board = Board::standard();
+
+        for tile in board.land_tiles() {
+            if matches!(tile.tile_type, TileType::Desert) {
+                assert!(
+                    tile.dice_number.is_none(),
+                    "Desert tile should not have a dice number"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_standard_board_has_9_harbors() {
+        let board = Board::standard();
+        assert_eq!(board.harbors.len(), 9, "Should have 9 harbors");
+    }
+
+    #[test]
+    fn test_harbors_have_correct_distribution() {
+        let board = Board::standard();
+
+        let generic_count = board.harbors.iter()
+            .filter(|h| matches!(h.harbor_type, Harbor::Generic))
+            .count();
+        let specific_count = board.harbors.iter()
+            .filter(|h| matches!(h.harbor_type, Harbor::Specific(_)))
+            .count();
+
+        assert_eq!(generic_count, 4, "Should have 4 generic (3:1) harbors");
+        assert_eq!(specific_count, 5, "Should have 5 specific (2:1) harbors");
+
+        // Check each resource has a specific harbor
+        for resource in Resource::ALL {
+            let has_resource_harbor = board.harbors.iter()
+                .any(|h| h.harbor_type == Harbor::Specific(resource));
+            assert!(has_resource_harbor, "Should have a 2:1 harbor for {:?}", resource);
+        }
+    }
+
+    #[test]
+    fn test_harbors_are_on_coastal_edges() {
+        let board = Board::standard();
+
+        for harbor in &board.harbors {
+            let touching = harbor.edge.touching_hexes();
+
+            // At least one hex should be land
+            let has_land = touching.iter().any(|h| {
+                board.tiles.get(h).is_some_and(|t| !matches!(t.tile_type, TileType::Ocean))
+            });
+
+            // At least one hex should be ocean or outside the board
+            let has_ocean = touching.iter().any(|h| {
+                board.tiles.get(h).is_some_and(|t| matches!(t.tile_type, TileType::Ocean))
+                    || !board.tiles.contains_key(h)
+            });
+
+            assert!(has_land && has_ocean, "Harbor edge should be on coast (between land and ocean)");
+        }
+    }
+
+    #[test]
+    fn test_harbors_are_randomized() {
+        // Generate multiple boards and check that harbor positions vary
+        let board1 = Board::standard();
+        let board2 = Board::standard();
+
+        let edges1: Vec<_> = board1.harbors.iter().map(|h| h.edge).collect();
+        let types1: Vec<_> = board1.harbors.iter().map(|h| h.harbor_type).collect();
+
+        let edges2: Vec<_> = board2.harbors.iter().map(|h| h.edge).collect();
+        let types2: Vec<_> = board2.harbors.iter().map(|h| h.harbor_type).collect();
+
+        // Check that at least some harbor positions or types are different
+        let mut found_different = edges1 != edges2 || types1 != types2;
+
+        if !found_different {
+            // Try more boards
+            for _ in 0..10 {
+                let board3 = Board::standard();
+                let edges3: Vec<_> = board3.harbors.iter().map(|h| h.edge).collect();
+                let types3: Vec<_> = board3.harbors.iter().map(|h| h.harbor_type).collect();
+                if edges3 != edges1 || types3 != types1 {
+                    found_different = true;
+                    break;
+                }
+            }
+        }
+
+        assert!(found_different, "Harbor positions/types should be randomized");
     }
 }

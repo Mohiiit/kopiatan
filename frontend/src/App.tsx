@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, Show, onMount, createEffect } from "solid-js";
 import { Board } from "./components/Board";
 import { PlayerHUD } from "./components/PlayerHUD";
 import { Lobby } from "./components/Lobby";
@@ -6,6 +6,7 @@ import { MapEditor } from "./components/MapEditor";
 import { StatsPanel } from "./components/StatsPanel";
 import { MultiplayerBoard } from "./components/MultiplayerBoard";
 import { MultiplayerHUD } from "./components/MultiplayerHUD";
+import { SoundControl } from "./components/SoundControl";
 import { gameStore, initializeGame, isFinished, getWinner, getVictoryPoints } from "./stores/gameStore";
 import {
   multiplayerStore,
@@ -14,6 +15,7 @@ import {
   isMyTurn,
   getMyPlayerIndex,
 } from "./stores/multiplayerStore";
+import { SoundManager } from "./utils/SoundManager";
 import "./App.css";
 
 type GameMode = "menu" | "singleplayer-setup" | "singleplayer" | "multiplayer-lobby" | "multiplayer" | "map-editor" | "stats";
@@ -29,14 +31,53 @@ function App() {
   ]);
 
 
+  // Initialize sound manager on first user interaction
+  onMount(() => {
+    const initSound = () => {
+      SoundManager.init();
+      document.removeEventListener('click', initSound);
+      document.removeEventListener('keydown', initSound);
+    };
+    document.addEventListener('click', initSound);
+    document.addEventListener('keydown', initSound);
+  });
+
   // Set up multiplayer event handlers
   setEventHandlers({
     onGameStarted: () => {
+      SoundManager.play('gameStart');
       setMode("multiplayer");
     },
     onGameOver: (_winner, winnerName) => {
+      SoundManager.play('victory');
       console.log(`Game over! Winner: ${winnerName}`);
     },
+  });
+
+  // Track resources for resource collection sound
+  let lastResourceState: string | null = null;
+  createEffect(() => {
+    if (multiplayerStore.gameState?.players) {
+      const myIndex = getMyPlayerIndex();
+      if (myIndex !== null) {
+        const myResources = multiplayerStore.gameState.players[myIndex]?.resources;
+        if (myResources) {
+          const resourceStr = JSON.stringify(myResources);
+          if (lastResourceState !== null && resourceStr !== lastResourceState) {
+            // Check if resources increased (not decreased)
+            const prev = JSON.parse(lastResourceState);
+            const current = myResources;
+            const gained = ['brick', 'lumber', 'ore', 'grain', 'wool'].some(
+              (r) => (current[r] || 0) > (prev[r] || 0)
+            );
+            if (gained) {
+              SoundManager.play('collectResources');
+            }
+          }
+          lastResourceState = resourceStr;
+        }
+      }
+    }
   });
 
   async function startSinglePlayer() {
@@ -65,8 +106,13 @@ function App() {
   return (
     <div class="app">
       <header>
-        <h1>🥤 Kopiatan</h1>
-        <p>A Singapore-themed Catan game</p>
+        <div class="header-content">
+          <div class="header-title">
+            <h1>🥤 Kopiatan</h1>
+            <p>A Singapore-themed Catan game</p>
+          </div>
+          <SoundControl />
+        </div>
       </header>
 
       <Show when={gameStore.error}>

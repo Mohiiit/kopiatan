@@ -18,7 +18,7 @@ interface LobbyProps {
   onGameStart: () => void;
 }
 
-export const Lobby: Component<LobbyProps> = (props) => {
+export const Lobby: Component<LobbyProps> = (_props) => {
   const [playerName, setPlayerName] = createSignal("Player");
   const [maxPlayers, setMaxPlayers] = createSignal(4);
   const [serverUrl, setServerUrl] = createSignal("ws://localhost:8080");

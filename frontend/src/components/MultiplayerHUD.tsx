@@ -1,5 +1,6 @@
-import { Show, For, createMemo, createSignal } from "solid-js";
+import { Show, For, createMemo, createSignal, createEffect, onMount } from "solid-js";
 import type { Component } from "solid-js";
+import { SoundManager } from "../utils/SoundManager";
 
 interface MultiplayerHUDProps {
   gameState: any;
@@ -10,8 +11,8 @@ interface MultiplayerHUDProps {
   onAction: (action: any) => void;
 }
 
-// Visual dice component with enhanced styling
-function Dice(props: { value: number }) {
+// Animated dice component with roll effect
+function Dice(props: { value: number; isRolling?: boolean }) {
   const dotPositions: Record<number, [number, number][]> = {
     1: [[50, 50]],
     2: [[25, 25], [75, 75]],
@@ -24,38 +25,43 @@ function Dice(props: { value: number }) {
   const dots = dotPositions[props.value] || [];
 
   return (
-    <div class="dice" style={{
-      width: "56px",
-      height: "56px",
-      background: "linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%)",
-      "border-radius": "10px",
-      border: "none",
-      position: "relative",
-      display: "inline-block",
-      margin: "0 6px",
-      "box-shadow": "0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.9)",
-      transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-    }}>
+    <div
+      class="hud-dice"
+      classList={{ "dice-rolling": props.isRolling }}
+    >
       <For each={dots}>
         {([x, y]) => (
-          <div style={{
-            position: "absolute",
-            width: "10px",
-            height: "10px",
-            background: "#1a1a28",
-            "border-radius": "50%",
-            left: `${x - 9}%`,
-            top: `${y - 9}%`,
-            "box-shadow": "inset 0 1px 2px rgba(0,0,0,0.3)",
-          }} />
+          <div
+            class="dice-dot"
+            style={{
+              left: `${x - 9}%`,
+              top: `${y - 9}%`,
+            }}
+          />
         )}
       </For>
     </div>
   );
 }
 
-// Resource icon component with enhanced styling
-function ResourceIcon(props: { resource: string; count: number }) {
+// Enhanced resource card component
+function ResourceCard(props: {
+  resource: string;
+  count: number;
+  showChange?: number;
+  compact?: boolean;
+}) {
+  const [showPulse, setShowPulse] = createSignal(false);
+  const [prevCount, setPrevCount] = createSignal(props.count);
+
+  createEffect(() => {
+    if (props.count !== prevCount()) {
+      setShowPulse(true);
+      setTimeout(() => setShowPulse(false), 600);
+      setPrevCount(props.count);
+    }
+  });
+
   const icons: Record<string, string> = {
     Brick: "🧱",
     Lumber: "🪵",
@@ -64,35 +70,152 @@ function ResourceIcon(props: { resource: string; count: number }) {
     Wool: "🐑",
   };
 
-  const colors: Record<string, string> = {
-    Brick: "linear-gradient(135deg, #c0392b 0%, #922b21 100%)",
-    Lumber: "linear-gradient(135deg, #27ae60 0%, #1e8449 100%)",
-    Ore: "linear-gradient(135deg, #7f8c8d 0%, #5d6d7e 100%)",
-    Grain: "linear-gradient(135deg, #f1c40f 0%, #d4ac0d 100%)",
-    Wool: "linear-gradient(135deg, #ecf0f1 0%, #d5dbdb 100%)",
-  };
-
-  // Use dark text for light backgrounds (Wool, Grain)
-  const needsDarkText = props.resource === "Wool" || props.resource === "Grain";
+  const resourceClass = props.resource.toLowerCase();
 
   return (
-    <div class="resource-item" style={{
-      display: "flex",
-      "align-items": "center",
-      gap: "4px",
-      padding: "6px 10px",
-      background: colors[props.resource] || "#666",
-      "border-radius": "8px",
-      "font-size": "13px",
-      "min-width": "48px",
-      color: needsDarkText ? "#1a1a28" : "white",
-      "box-shadow": "0 2px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)",
-      transition: "transform 0.15s ease, box-shadow 0.15s ease",
-      cursor: "default",
-    }}>
-      <span style={{ "font-size": "15px", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.2))" }}>{icons[props.resource] || "?"}</span>
-      <span style={{ "font-weight": "700", "font-size": "14px", "text-shadow": needsDarkText ? "none" : "0 1px 1px rgba(0,0,0,0.2)" }}>{props.count}</span>
+    <div
+      class={`resource-card resource-${resourceClass}`}
+      classList={{
+        "resource-pulse": showPulse(),
+        "resource-compact": props.compact,
+        "resource-empty": props.count === 0
+      }}
+    >
+      <span class="resource-icon">{icons[props.resource] || "?"}</span>
+      <span class="resource-count">{props.count}</span>
+      <Show when={props.showChange && props.showChange !== 0}>
+        <span class={`resource-change ${props.showChange! > 0 ? 'positive' : 'negative'}`}>
+          {props.showChange! > 0 ? '+' : ''}{props.showChange}
+        </span>
+      </Show>
     </div>
+  );
+}
+
+// Turn indicator badge
+function TurnBadge(props: { isMyTurn: boolean; playerName: string }) {
+  return (
+    <div class={`turn-badge ${props.isMyTurn ? 'my-turn' : 'waiting'}`}>
+      <div class="turn-badge-indicator" />
+      <span class="turn-badge-text">
+        {props.isMyTurn ? "Your Turn" : `${props.playerName}'s Turn`}
+      </span>
+    </div>
+  );
+}
+
+// Phase indicator with icon
+function PhaseIndicator(props: { phase: { text: string; type: string; placing?: string } }) {
+  const phaseIcons: Record<string, string> = {
+    setup: "🏗️",
+    preroll: "🎲",
+    main: "⚡",
+    robber: "🦹",
+    steal: "💰",
+    discard: "🗑️",
+    finished: "🏆",
+    unknown: "❓",
+  };
+
+  const phaseColors: Record<string, string> = {
+    setup: "var(--color-sapphire)",
+    preroll: "var(--color-jade)",
+    main: "var(--color-amber)",
+    robber: "var(--color-coral)",
+    steal: "var(--color-coral)",
+    discard: "var(--color-orchid)",
+    finished: "var(--color-jade)",
+    unknown: "var(--color-text-muted)",
+  };
+
+  return (
+    <div
+      class="phase-indicator"
+      style={{ "--phase-color": phaseColors[props.phase.type] || phaseColors.unknown }}
+    >
+      <span class="phase-icon">{phaseIcons[props.phase.type] || "?"}</span>
+      <span class="phase-text">{props.phase.text}</span>
+    </div>
+  );
+}
+
+// Player card in the list
+function PlayerCard(props: {
+  player: any;
+  index: number;
+  isCurrentTurn: boolean;
+  isMe: boolean;
+  victoryPoints: number;
+}) {
+  const colorMap: Record<string, string> = {
+    Red: "#e74c3c",
+    Blue: "#3498db",
+    Orange: "#e67e22",
+    White: "#ecf0f1",
+  };
+
+  const playerColor = colorMap[props.player.color] || "#ffffff";
+
+  return (
+    <div
+      class="player-card-item"
+      classList={{
+        "is-current-turn": props.isCurrentTurn,
+        "is-me": props.isMe
+      }}
+      style={{ "--player-color": playerColor }}
+    >
+      <div class="player-card-left">
+        <div class="player-color-indicator" />
+        <div class="player-card-info">
+          <span class="player-card-name">
+            {props.player.name}
+            <Show when={props.isMe}>
+              <span class="you-tag">YOU</span>
+            </Show>
+          </span>
+          <Show when={props.isCurrentTurn}>
+            <span class="turn-tag">Playing</span>
+          </Show>
+        </div>
+      </div>
+      <div class="player-card-right">
+        <div class="vp-display">
+          <span class="vp-icon">🏆</span>
+          <span class="vp-value">{props.victoryPoints}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Action button with loading state
+function ActionButton(props: {
+  onClick: () => void;
+  disabled?: boolean;
+  variant: "primary" | "secondary" | "warning";
+  icon?: string;
+  children: any;
+  loading?: boolean;
+}) {
+  return (
+    <button
+      class={`action-button action-${props.variant}`}
+      classList={{
+        "action-disabled": props.disabled,
+        "action-loading": props.loading
+      }}
+      onClick={() => !props.disabled && props.onClick()}
+      disabled={props.disabled}
+    >
+      <Show when={props.loading}>
+        <span class="button-spinner" />
+      </Show>
+      <Show when={!props.loading && props.icon}>
+        <span class="button-icon">{props.icon}</span>
+      </Show>
+      <span class="button-text">{props.children}</span>
+    </button>
   );
 }
 
@@ -102,16 +225,16 @@ export const MultiplayerHUD: Component<MultiplayerHUDProps> = (props) => {
     const phase = props.gameState?.phase;
     if (!phase) return { text: "Loading...", type: "unknown" };
     if (typeof phase === "object" && "Setup" in phase) {
-      return { text: `Setup: Place ${phase.Setup.placing}`, type: "setup", placing: phase.Setup.placing };
+      return { text: `Place ${phase.Setup.placing}`, type: "setup", placing: phase.Setup.placing };
     }
-    if (phase === "PreRoll") return { text: "Roll the dice", type: "preroll" };
-    if (phase === "MainPhase") return { text: "Main Phase", type: "main" };
-    if (phase === "RobberMoveRequired") return { text: "Move the Robber", type: "robber" };
+    if (phase === "PreRoll") return { text: "Roll the Dice", type: "preroll" };
+    if (phase === "MainPhase") return { text: "Build & Trade", type: "main" };
+    if (phase === "RobberMoveRequired") return { text: "Move Robber", type: "robber" };
     if (typeof phase === "object" && "RobberSteal" in phase) {
-      return { text: "Choose victim", type: "steal" };
+      return { text: "Choose Victim", type: "steal" };
     }
     if (typeof phase === "object" && "DiscardRequired" in phase) {
-      return { text: "Discard cards", type: "discard" };
+      return { text: "Discard Cards", type: "discard" };
     }
     if (typeof phase === "object" && "Finished" in phase) {
       return { text: "Game Over!", type: "finished" };
@@ -133,6 +256,13 @@ export const MultiplayerHUD: Component<MultiplayerHUDProps> = (props) => {
     if (props.myPlayerIndex === null || !props.gameState?.players) return null;
     const player = props.gameState.players[props.myPlayerIndex];
     return player?.resources || null;
+  });
+
+  // Total resources count
+  const totalResources = createMemo(() => {
+    const res = myResources();
+    if (!res) return 0;
+    return (res.brick || 0) + (res.lumber || 0) + (res.ore || 0) + (res.grain || 0) + (res.wool || 0);
   });
 
   // Discard state
@@ -198,242 +328,157 @@ export const MultiplayerHUD: Component<MultiplayerHUDProps> = (props) => {
     return props.gameState.players[props.currentPlayer]?.name || `Player ${props.currentPlayer + 1}`;
   });
 
+  // Dice rolling state
+  const [isRolling, setIsRolling] = createSignal(false);
+  const [lastDiceRoll, setLastDiceRoll] = createSignal<string | null>(null);
+  const [lastCurrentPlayer, setLastCurrentPlayer] = createSignal<number | null>(null);
+
+  // Initialize sound manager on mount
+  onMount(() => {
+    SoundManager.init();
+  });
+
+  // Play dice roll sound when dice values change
+  createEffect(() => {
+    const diceRoll = props.gameState?.dice_roll;
+    if (diceRoll && diceRoll.length === 2) {
+      const diceStr = JSON.stringify(diceRoll);
+      if (diceStr !== lastDiceRoll()) {
+        SoundManager.play('diceRoll');
+        setLastDiceRoll(diceStr);
+      }
+    }
+  });
+
+  // Play turn change sound when current player changes
+  createEffect(() => {
+    const currentPlayer = props.currentPlayer;
+    if (lastCurrentPlayer() !== null && currentPlayer !== lastCurrentPlayer()) {
+      SoundManager.play('turnChange');
+    }
+    setLastCurrentPlayer(currentPlayer);
+  });
+
+  const handleRollDice = () => {
+    setIsRolling(true);
+    setTimeout(() => {
+      props.onAction("RollDice");
+      setIsRolling(false);
+    }, 300);
+  };
+
   return (
-    <div class="multiplayer-hud" style={{
-      background: "#1a1a28",
-      "border-radius": "20px",
-      padding: "20px",
-      color: "#f8f8f2",
-      border: "1px solid rgba(255,255,255,0.06)",
-      "box-shadow": "0 4px 20px rgba(0,0,0,0.4)",
-    }}>
-      {/* Turn Indicator */}
-      <div class="turn-info" style={{ "margin-bottom": "20px" }}>
-        <h2 style={{
-          margin: "0 0 8px 0",
-          "font-size": "1.4rem",
-          "font-family": "'Playfair Display', Georgia, serif",
-          "font-weight": "600",
-          color: "#f8f8f2",
-        }}>
-          {currentPlayerName()}'s Turn
-        </h2>
-        <p style={{
-          margin: 0,
-          color: props.isMyTurn ? "#f5a623" : "#606070",
-          "font-weight": "600",
-          "font-size": "0.95rem",
-          "text-transform": "uppercase",
-          "letter-spacing": "0.03em",
-        }}>
-          {props.isMyTurn ? "Your turn!" : "Waiting..."}
-        </p>
-        <p style={{
-          margin: "6px 0 0 0",
-          color: "#a0a0b0",
-          "font-size": "0.85rem",
-          "font-weight": "500",
-        }}>
-          Phase: {phaseInfo().text}
-        </p>
+    <div class="multiplayer-hud">
+      {/* Header Section - Turn & Phase */}
+      <div class="hud-header">
+        <TurnBadge isMyTurn={props.isMyTurn} playerName={currentPlayerName()} />
+        <PhaseIndicator phase={phaseInfo()} />
       </div>
 
       {/* Dice Display */}
       <Show when={props.gameState?.dice_roll}>
-        <div class="dice-display" style={{
-          "text-align": "center",
-          padding: "16px",
-          background: "#242436",
-          "border-radius": "12px",
-          "margin-bottom": "20px",
-          border: "1px solid rgba(255,255,255,0.06)",
-        }}>
-          <p style={{
-            margin: "0 0 12px 0",
-            color: "#606070",
-            "font-size": "0.75rem",
-            "text-transform": "uppercase",
-            "letter-spacing": "0.08em",
-            "font-weight": "600",
-          }}>Last Roll</p>
-          <div style={{ display: "flex", "justify-content": "center", "align-items": "center" }}>
-            <Dice value={props.gameState.dice_roll[0]} />
-            <span style={{
-              margin: "0 8px",
-              "font-size": "1.5rem",
-              color: "#f5a623",
-              "font-weight": "300",
-            }}>+</span>
-            <Dice value={props.gameState.dice_roll[1]} />
-            <span style={{
-              margin: "0 8px",
-              "font-size": "1.5rem",
-              color: "#f5a623",
-              "font-weight": "300",
-            }}>=</span>
-            <span style={{
-              "font-size": "2rem",
-              "font-weight": "700",
-              "font-family": "'Playfair Display', Georgia, serif",
-              color: (props.gameState.dice_roll[0] + props.gameState.dice_roll[1] === 7) ? "#ff6b6b" : "#2ecc71",
-              "text-shadow": "0 2px 4px rgba(0,0,0,0.3)",
-            }}>
+        <div class="hud-dice-section">
+          <div class="dice-label">Last Roll</div>
+          <div class="dice-container">
+            <Dice value={props.gameState.dice_roll[0]} isRolling={isRolling()} />
+            <span class="dice-operator">+</span>
+            <Dice value={props.gameState.dice_roll[1]} isRolling={isRolling()} />
+            <span class="dice-operator">=</span>
+            <div
+              class="dice-total"
+              classList={{
+                "dice-seven": props.gameState.dice_roll[0] + props.gameState.dice_roll[1] === 7
+              }}
+            >
               {props.gameState.dice_roll[0] + props.gameState.dice_roll[1]}
-            </span>
+            </div>
           </div>
         </div>
       </Show>
 
       {/* Action Buttons */}
       <Show when={props.isMyTurn}>
-        <div class="actions" style={{ "margin-bottom": "20px" }}>
+        <div class="hud-actions">
           <Show when={canRoll()}>
-            <button
-              onClick={() => props.onAction("RollDice")}
-              style={{
-                width: "100%",
-                padding: "14px 20px",
-                background: "linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)",
-                border: "none",
-                "border-radius": "12px",
-                color: "white",
-                "font-size": "1rem",
-                "font-weight": "700",
-                cursor: "pointer",
-                display: "flex",
-                "align-items": "center",
-                "justify-content": "center",
-                gap: "10px",
-                "box-shadow": "0 4px 15px rgba(46, 204, 113, 0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
-                transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-                "text-shadow": "0 1px 2px rgba(0,0,0,0.2)",
-                "letter-spacing": "0.02em",
-              }}
+            <ActionButton
+              onClick={handleRollDice}
+              variant="primary"
+              icon="🎲"
+              loading={isRolling()}
             >
-              <span style={{ "font-size": "1.25rem" }}>🎲</span> Roll Dice
-            </button>
+              Roll Dice
+            </ActionButton>
           </Show>
 
           <Show when={canEndTurn()}>
-            <button
+            <ActionButton
               onClick={() => props.onAction("EndTurn")}
-              style={{
-                width: "100%",
-                padding: "14px 20px",
-                background: "linear-gradient(135deg, #f5a623 0%, #d68910 100%)",
-                border: "none",
-                "border-radius": "12px",
-                color: "#1a1a28",
-                "font-size": "1rem",
-                "font-weight": "700",
-                cursor: "pointer",
-                "box-shadow": "0 4px 15px rgba(245, 166, 35, 0.35), inset 0 1px 0 rgba(255,255,255,0.2)",
-                transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-                "letter-spacing": "0.02em",
-                "margin-top": "8px",
-              }}
+              variant="secondary"
+              icon="⏭️"
             >
-              ⏭️ End Turn
-            </button>
+              End Turn
+            </ActionButton>
           </Show>
 
           <Show when={!canRoll() && !canEndTurn() && phaseInfo().type === "setup"}>
-            <p style={{ color: "#aaa", "font-size": "14px", "text-align": "center" }}>
-              Click on the highlighted spots on the board to place your {phaseInfo().placing?.toLowerCase()}
-            </p>
+            <div class="action-hint">
+              <span class="hint-icon">👆</span>
+              <span>Click on highlighted spots to place your {phaseInfo().placing?.toLowerCase()}</span>
+            </div>
           </Show>
 
           <Show when={phaseInfo().type === "robber"}>
-            <p style={{ color: "#e74c3c", "font-size": "14px", "text-align": "center" }}>
-              Click on a tile to move the robber
-            </p>
+            <div class="action-hint warning">
+              <span class="hint-icon">🦹</span>
+              <span>Click on a tile to move the robber</span>
+            </div>
           </Show>
         </div>
       </Show>
 
       {/* Discard UI */}
       <Show when={needsToDiscard()}>
-        <div class="discard-ui" style={{
-          background: "#4a1a1a",
-          "border-radius": "8px",
-          padding: "16px",
-          "margin-bottom": "16px",
-          border: "2px solid #e74c3c",
-        }}>
-          <h4 style={{ margin: "0 0 8px 0", color: "#e74c3c", "font-size": "16px" }}>
-            Discard Cards
-          </h4>
-          <p style={{ margin: "0 0 12px 0", color: "#faa", "font-size": "13px" }}>
-            You must discard {cardsToDiscard()} cards ({currentDiscardTotal()}/{cardsToDiscard()} selected)
+        <div class="hud-discard">
+          <div class="discard-header">
+            <span class="discard-icon">🗑️</span>
+            <h4>Discard Cards</h4>
+          </div>
+          <p class="discard-info">
+            Select {cardsToDiscard()} cards to discard
+            <span class="discard-progress">
+              ({currentDiscardTotal()}/{cardsToDiscard()})
+            </span>
           </p>
 
-          <div style={{ display: "flex", "flex-direction": "column", gap: "8px" }}>
+          <div class="discard-resources">
             <For each={["brick", "lumber", "ore", "grain", "wool"]}>
               {(resource) => {
                 const icons: Record<string, string> = {
                   brick: "🧱", lumber: "🪵", ore: "🪨", grain: "🌾", wool: "🐑"
                 };
-                const colors: Record<string, string> = {
-                  brick: "#c0392b", lumber: "#27ae60", ore: "#7f8c8d", grain: "#f1c40f", wool: "#bdc3c7"
-                };
                 const available = () => myResources()?.[resource] || 0;
                 const selected = () => discardAmounts()[resource as keyof ReturnType<typeof discardAmounts>] || 0;
 
                 return (
-                  <div style={{
-                    display: "flex",
-                    "align-items": "center",
-                    "justify-content": "space-between",
-                    padding: "6px 10px",
-                    background: colors[resource],
-                    "border-radius": "6px",
-                  }}>
-                    <span style={{ display: "flex", "align-items": "center", gap: "6px" }}>
-                      <span>{icons[resource]}</span>
-                      <span style={{ "font-weight": "bold", "text-transform": "capitalize" }}>{resource}</span>
-                      <span style={{ color: "#333", "font-size": "12px" }}>({available()} available)</span>
-                    </span>
-                    <div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
+                  <div class={`discard-row resource-${resource}`}>
+                    <div class="discard-resource-info">
+                      <span class="discard-resource-icon">{icons[resource]}</span>
+                      <span class="discard-resource-name">{resource}</span>
+                      <span class="discard-available">({available()})</span>
+                    </div>
+                    <div class="discard-controls">
                       <button
+                        class="discard-btn minus"
                         onClick={() => adjustDiscard(resource, -1)}
                         disabled={selected() <= 0}
-                        style={{
-                          width: "28px",
-                          height: "28px",
-                          border: "none",
-                          "border-radius": "4px",
-                          background: selected() <= 0 ? "#666" : "#333",
-                          color: "white",
-                          cursor: selected() <= 0 ? "not-allowed" : "pointer",
-                          "font-size": "18px",
-                          "font-weight": "bold",
-                        }}
                       >
                         -
                       </button>
-                      <span style={{
-                        "min-width": "24px",
-                        "text-align": "center",
-                        "font-weight": "bold",
-                        "font-size": "16px",
-                        color: "#333",
-                      }}>
-                        {selected()}
-                      </span>
+                      <span class="discard-count">{selected()}</span>
                       <button
+                        class="discard-btn plus"
                         onClick={() => adjustDiscard(resource, 1)}
                         disabled={selected() >= available() || currentDiscardTotal() >= cardsToDiscard()}
-                        style={{
-                          width: "28px",
-                          height: "28px",
-                          border: "none",
-                          "border-radius": "4px",
-                          background: (selected() >= available() || currentDiscardTotal() >= cardsToDiscard()) ? "#666" : "#333",
-                          color: "white",
-                          cursor: (selected() >= available() || currentDiscardTotal() >= cardsToDiscard()) ? "not-allowed" : "pointer",
-                          "font-size": "18px",
-                          "font-weight": "bold",
-                        }}
                       >
                         +
                       </button>
@@ -444,101 +489,55 @@ export const MultiplayerHUD: Component<MultiplayerHUDProps> = (props) => {
             </For>
           </div>
 
-          <button
+          <ActionButton
             onClick={submitDiscard}
             disabled={currentDiscardTotal() !== cardsToDiscard()}
-            style={{
-              width: "100%",
-              "margin-top": "12px",
-              padding: "12px",
-              background: currentDiscardTotal() === cardsToDiscard() ? "#e74c3c" : "#666",
-              border: "none",
-              "border-radius": "8px",
-              color: "white",
-              "font-size": "16px",
-              "font-weight": "bold",
-              cursor: currentDiscardTotal() === cardsToDiscard() ? "pointer" : "not-allowed",
-            }}
+            variant="warning"
+            icon="✓"
           >
-            Confirm Discard ({currentDiscardTotal()}/{cardsToDiscard()})
-          </button>
+            Confirm Discard
+          </ActionButton>
         </div>
       </Show>
 
       {/* My Resources */}
       <Show when={myResources()}>
-        <div class="my-resources" style={{
-          background: "#1a1a2e",
-          "border-radius": "8px",
-          padding: "12px",
-          "margin-bottom": "16px",
-        }}>
-          <h4 style={{ margin: "0 0 8px 0", "font-size": "14px", color: "#aaa" }}>Your Resources</h4>
-          <div style={{ display: "flex", gap: "4px", "justify-content": "space-between" }}>
-            <ResourceIcon resource="Brick" count={myResources()?.brick || 0} />
-            <ResourceIcon resource="Lumber" count={myResources()?.lumber || 0} />
-            <ResourceIcon resource="Ore" count={myResources()?.ore || 0} />
-            <ResourceIcon resource="Grain" count={myResources()?.grain || 0} />
-            <ResourceIcon resource="Wool" count={myResources()?.wool || 0} />
+        <div class="hud-resources">
+          <div class="resources-header">
+            <h4>Your Resources</h4>
+            <span class="resources-total">{totalResources()} cards</span>
+          </div>
+          <div class="resources-grid">
+            <ResourceCard resource="Brick" count={myResources()?.brick || 0} />
+            <ResourceCard resource="Lumber" count={myResources()?.lumber || 0} />
+            <ResourceCard resource="Ore" count={myResources()?.ore || 0} />
+            <ResourceCard resource="Grain" count={myResources()?.grain || 0} />
+            <ResourceCard resource="Wool" count={myResources()?.wool || 0} />
           </div>
         </div>
       </Show>
 
       {/* All Players */}
-      <div class="all-players" style={{
-        background: "#1a1a2e",
-        "border-radius": "8px",
-        padding: "12px",
-      }}>
-        <h4 style={{ margin: "0 0 8px 0", "font-size": "14px", color: "#aaa" }}>All Players</h4>
+      <div class="hud-players">
+        <h4>Players</h4>
         <Show when={props.gameState?.players}>
-          <For each={props.gameState.players}>
-            {(player: any, i) => (
-              <div
-                style={{
-                  display: "flex",
-                  "align-items": "center",
-                  "justify-content": "space-between",
-                  padding: "8px",
-                  background: i() === props.currentPlayer ? "#3a3a5e" : "transparent",
-                  "border-radius": "4px",
-                  "margin-bottom": "4px",
-                }}
-              >
-                <div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
-                  <span
-                    style={{
-                      width: "12px",
-                      height: "12px",
-                      "border-radius": "50%",
-                      background: getPlayerColorCSS(player.color),
-                    }}
-                  />
-                  <span>{player.name}</span>
-                  <Show when={i() === props.myPlayerIndex}>
-                    <span style={{ color: "#f39c12", "font-size": "12px" }}>(You)</span>
-                  </Show>
-                </div>
-                <span style={{ "font-weight": "bold" }}>
-                  {props.gameState?.victory_points?.[i()] ?? 0} VP
-                </span>
-              </div>
-            )}
-          </For>
+          <div class="players-list">
+            <For each={props.gameState.players}>
+              {(player: any, i) => (
+                <PlayerCard
+                  player={player}
+                  index={i()}
+                  isCurrentTurn={i() === props.currentPlayer}
+                  isMe={i() === props.myPlayerIndex}
+                  victoryPoints={props.gameState?.victory_points?.[i()] ?? 0}
+                />
+              )}
+            </For>
+          </div>
         </Show>
       </div>
     </div>
   );
 };
-
-function getPlayerColorCSS(color: string): string {
-  const colors: Record<string, string> = {
-    Red: "#e74c3c",
-    Blue: "#3498db",
-    Orange: "#e67e22",
-    White: "#ecf0f1",
-  };
-  return colors[color] || "#ffffff";
-}
 
 export default MultiplayerHUD;

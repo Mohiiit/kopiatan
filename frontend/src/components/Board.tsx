@@ -81,11 +81,15 @@ export const Board: Component<BoardProps> = (props) => {
       });
     }
 
+    // Harbors: array of {edge: {hex, direction}, harbor_type}
+    const harbors = board.harbors || [];
+
     renderer.renderBoard(
       tilesRecord,
       verticesRecord,
       edgesRecord,
-      players
+      players,
+      harbors
     );
   }
 
