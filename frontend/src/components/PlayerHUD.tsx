@@ -1,8 +1,9 @@
-import { Show, For, createMemo } from "solid-js";
+import { Show, For, createMemo, createSignal } from "solid-js";
 import type { Component } from "solid-js";
 import { gameStore, applyAction, getVictoryPoints } from "../stores/gameStore";
 import type { Resource } from "../types/game";
 import { getResourceSingaporeName } from "../types/game";
+import { TradePanel } from "./TradePanel";
 
 const RESOURCE_ICONS: Record<Resource, string> = {
   Brick: "🏠",
@@ -13,6 +14,8 @@ const RESOURCE_ICONS: Record<Resource, string> = {
 };
 
 export const PlayerHUD: Component = () => {
+  const [showTrade, setShowTrade] = createSignal(false);
+
   const currentPlayer = createMemo(() => {
     if (!gameStore.state) return null;
     return gameStore.state.players[gameStore.currentPlayer];
@@ -182,6 +185,17 @@ export const PlayerHUD: Component = () => {
                     🃏 Buy Dev Card
                   </button>
                 </div>
+
+                <button
+                  onClick={() => setShowTrade((s) => !s)}
+                  class={`action-btn ${showTrade() ? "active" : ""}`}
+                >
+                  🤝 {showTrade() ? "Hide Trade" : "Trade"}
+                </button>
+
+                <Show when={showTrade()}>
+                  <TradePanel currentPlayer={gameStore.currentPlayer} />
+                </Show>
               </Show>
 
               <Show when={canEndTurn()}>
