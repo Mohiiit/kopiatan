@@ -88,14 +88,23 @@ function getResourceSymbol(resource: Resource): string {
   return symbols[resource];
 }
 
-// Port colors
+// Port colors - warm amber accents for Tropical Night Market theme
 const PORT_COLORS = {
-  Generic: { base: 0x8b4513, highlight: 0xcd853f, shadow: 0x654321 }, // Brown for generic 3:1
-  Brick: { base: 0xc0392b, highlight: 0xe74c3c, shadow: 0x922b21 },
-  Lumber: { base: 0x27ae60, highlight: 0x2ecc71, shadow: 0x1e8449 },
-  Ore: { base: 0x5d6d7e, highlight: 0x85929e, shadow: 0x34495e },
-  Grain: { base: 0xf39c12, highlight: 0xf7dc6f, shadow: 0xd68910 },
-  Wool: { base: 0xa8e6cf, highlight: 0xdcedc1, shadow: 0x88d4ab },
+  Generic: { base: 0x6b4423, highlight: 0xd4a574, shadow: 0x3d2914, accent: 0xf4a460 }, // Warm brown for generic 3:1
+  Brick: { base: 0xa83232, highlight: 0xe67373, shadow: 0x6b1f1f, accent: 0xff6b6b },
+  Lumber: { base: 0x228b22, highlight: 0x66bb66, shadow: 0x145214, accent: 0x90ee90 },
+  Ore: { base: 0x4a5568, highlight: 0x9ca3af, shadow: 0x2d3748, accent: 0xcbd5e1 },
+  Grain: { base: 0xd97706, highlight: 0xfbbf24, shadow: 0x92400e, accent: 0xfde68a },
+  Wool: { base: 0x5eead4, highlight: 0xa7f3d0, shadow: 0x2dd4bf, accent: 0xd1fae5 },
+};
+
+// Dock wood colors for consistent pier styling
+const DOCK_COLORS = {
+  plank: 0x8b6914,
+  plankHighlight: 0xc9a227,
+  plankShadow: 0x5c4a0f,
+  post: 0x654321,
+  rope: 0xd4a574,
 };
 
 export class BoardRenderer {
@@ -314,17 +323,43 @@ export class BoardRenderer {
     // Draw resource icon for resource tiles
     if (tile.tile_type !== "Ocean" && typeof tile.tile_type === "object" && "Resource" in tile.tile_type) {
       const symbol = getResourceSymbol(tile.tile_type.Resource);
+
+      // Create a container for the resource icon badge
+      const iconContainer = new PIXI.Container();
+      // Position in the upper-left area of the hex to avoid overlapping with dice number
+      iconContainer.position.set(pos.x - 18, pos.y - 25);
+
+      // Draw shadow for depth
+      const iconShadow = new PIXI.Graphics();
+      iconShadow.circle(1, 2, 13);
+      iconShadow.fill({ color: 0x000000, alpha: 0.4 });
+      iconContainer.addChild(iconShadow);
+
+      // Draw background circle - use a contrasting dark color for visibility
+      const bgCircle = new PIXI.Graphics();
+      bgCircle.circle(0, 0, 13);
+      bgCircle.fill({ color: 0x2c3e50, alpha: 0.9 });
+      iconContainer.addChild(bgCircle);
+
+      // Draw border ring for extra contrast
+      const borderRing = new PIXI.Graphics();
+      borderRing.circle(0, 0, 13);
+      borderRing.stroke({ color: 0xffffff, width: 2, alpha: 0.8 });
+      iconContainer.addChild(borderRing);
+
+      // Draw the emoji icon - larger and fully opaque
       const icon = new PIXI.Text({
         text: symbol,
         style: {
-          fontSize: 18,
+          fontSize: 14,
           fontFamily: 'system-ui',
         }
       });
       icon.anchor.set(0.5);
-      icon.position.set(pos.x, pos.y - 20);
-      icon.alpha = 0.6;
-      this.boardContainer.addChild(icon);
+      icon.position.set(0, 0);
+      iconContainer.addChild(icon);
+
+      this.boardContainer.addChild(iconContainer);
     }
 
     // Draw dice number
@@ -443,9 +478,8 @@ export class BoardRenderer {
     const edgePos = edgeToPixel(harbor.edge, this.hexSize);
 
     // Calculate position offset - ports should be rendered on the ocean side of the edge
-    // We'll offset the port marker outward from the board center
     const centerDist = Math.sqrt(edgePos.x * edgePos.x + edgePos.y * edgePos.y);
-    const offsetScale = centerDist > 0 ? 35 / centerDist : 0;
+    const offsetScale = centerDist > 0 ? 55 / centerDist : 0;
     const offsetX = edgePos.x * offsetScale;
     const offsetY = edgePos.y * offsetScale;
 
@@ -466,96 +500,137 @@ export class BoardRenderer {
     const colorKey = isGeneric ? "Generic" : (resource || "Generic");
     const colors = PORT_COLORS[colorKey as keyof typeof PORT_COLORS] || PORT_COLORS.Generic;
 
-    // Draw dock/pier connecting to edge
-    const pier = new PIXI.Graphics();
-    const pierLength = 25;
+    // Calculate angle from port to edge (pointing toward the board)
     const angle = Math.atan2(-offsetY, -offsetX);
-    pier.moveTo(0, 0);
-    pier.lineTo(Math.cos(angle) * pierLength, Math.sin(angle) * pierLength);
-    pier.stroke({ color: 0x8b4513, width: 4 }); // Brown pier
-    container.addChild(pier);
 
-    // Draw port marker shadow
+    // --- Draw connecting dashed line from port to edge ---
+    const lineLength = 35;
+    const dashCount = 4;
+    const dashLength = lineLength / (dashCount * 2);
+
+    for (let i = 0; i < dashCount; i++) {
+      const startT = (i * 2 + 0.3) / (dashCount * 2);
+      const endT = (i * 2 + 1.3) / (dashCount * 2);
+
+      const dash = new PIXI.Graphics();
+      dash.moveTo(
+        Math.cos(angle) * lineLength * startT,
+        Math.sin(angle) * lineLength * startT
+      );
+      dash.lineTo(
+        Math.cos(angle) * lineLength * endT,
+        Math.sin(angle) * lineLength * endT
+      );
+      dash.stroke({ color: colors.accent, width: 2, alpha: 0.6 });
+      container.addChild(dash);
+    }
+
+    // --- Draw glowing beacon/buoy marker ---
+    const buoyRadius = 18;
+
+    // Outer glow effect (multiple layers)
+    for (let i = 3; i >= 0; i--) {
+      const glow = new PIXI.Graphics();
+      const glowRadius = buoyRadius + i * 4;
+      glow.circle(0, 0, glowRadius);
+      glow.fill({ color: colors.accent, alpha: 0.08 - i * 0.015 });
+      container.addChild(glow);
+    }
+
+    // Shadow under the buoy
     const shadow = new PIXI.Graphics();
-    shadow.circle(2, 2, 20);
-    shadow.fill({ color: 0x000000, alpha: 0.3 });
+    shadow.ellipse(2, 3, buoyRadius * 0.9, buoyRadius * 0.5);
+    shadow.fill({ color: 0x000000, alpha: 0.25 });
     container.addChild(shadow);
 
-    // Draw port marker base (circle with ship wheel design)
-    const base = new PIXI.Graphics();
-    base.circle(0, 0, 18);
-    base.fill({ color: colors.base });
-    container.addChild(base);
+    // Main buoy body - circular with gradient-like layering
+    const buoyBase = new PIXI.Graphics();
+    buoyBase.circle(0, 0, buoyRadius);
+    buoyBase.fill({ color: colors.shadow });
+    container.addChild(buoyBase);
 
-    // Draw inner highlight
+    const buoyMid = new PIXI.Graphics();
+    buoyMid.circle(0, -1, buoyRadius - 2);
+    buoyMid.fill({ color: colors.base });
+    container.addChild(buoyMid);
+
+    // Highlight crescent on top-left
     const highlight = new PIXI.Graphics();
-    highlight.circle(-3, -3, 12);
-    highlight.fill({ color: colors.highlight, alpha: 0.4 });
+    highlight.arc(0, 0, buoyRadius - 3, -Math.PI * 0.8, -Math.PI * 0.2);
+    highlight.stroke({ color: colors.highlight, width: 3, alpha: 0.7 });
     container.addChild(highlight);
 
-    // Draw border
-    const border = new PIXI.Graphics();
-    border.circle(0, 0, 18);
-    border.stroke({ color: colors.shadow, width: 2 });
-    container.addChild(border);
+    // Inner circle for content
+    const innerCircle = new PIXI.Graphics();
+    innerCircle.circle(0, -1, buoyRadius - 5);
+    innerCircle.fill({ color: 0x1a2634, alpha: 0.85 });
+    innerCircle.stroke({ color: colors.accent, width: 2 });
+    container.addChild(innerCircle);
 
-    // Draw trade ratio text
-    const ratio = isGeneric ? "3:1" : "2:1";
-    const ratioText = new PIXI.Text({
-      text: ratio,
-      style: {
-        fontSize: 10,
-        fontWeight: 'bold',
-        fontFamily: 'Arial, sans-serif',
-        fill: 0xffffff,
-      }
-    });
-    ratioText.anchor.set(0.5);
-    ratioText.position.set(0, -5);
-    container.addChild(ratioText);
-
-    // Draw resource icon or "?" for generic
+    // --- Content inside the buoy ---
     if (isGeneric) {
-      const questionMark = new PIXI.Text({
-        text: "?",
+      // Generic port: Show ⚓ anchor and 3:1 ratio
+      const anchorIcon = new PIXI.Text({
+        text: "⚓",
         style: {
-          fontSize: 12,
+          fontSize: 14,
+          fontFamily: 'system-ui',
+        }
+      });
+      anchorIcon.anchor.set(0.5);
+      anchorIcon.position.set(0, -6);
+      container.addChild(anchorIcon);
+
+      // Trade ratio
+      const ratioText = new PIXI.Text({
+        text: "3:1",
+        style: {
+          fontSize: 10,
           fontWeight: 'bold',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'system-ui, sans-serif',
           fill: 0xffffff,
         }
       });
-      questionMark.anchor.set(0.5);
-      questionMark.position.set(0, 6);
-      container.addChild(questionMark);
+      ratioText.anchor.set(0.5);
+      ratioText.position.set(0, 6);
+      container.addChild(ratioText);
+
     } else if (resource) {
+      // Specific resource port: Show resource icon and 2:1 ratio
       const symbol = getResourceSymbol(resource);
       const icon = new PIXI.Text({
         text: symbol,
         style: {
-          fontSize: 12,
+          fontSize: 14,
           fontFamily: 'system-ui',
         }
       });
       icon.anchor.set(0.5);
-      icon.position.set(0, 6);
+      icon.position.set(0, -6);
       container.addChild(icon);
+
+      // Trade ratio
+      const ratioText = new PIXI.Text({
+        text: "2:1",
+        style: {
+          fontSize: 10,
+          fontWeight: 'bold',
+          fontFamily: 'system-ui, sans-serif',
+          fill: 0xffffff,
+        }
+      });
+      ratioText.anchor.set(0.5);
+      ratioText.position.set(0, 6);
+      container.addChild(ratioText);
     }
 
-    // Draw anchor icon at the pier connection point
-    const anchorX = Math.cos(angle) * (pierLength - 5);
-    const anchorY = Math.sin(angle) * (pierLength - 5);
-    const anchor = new PIXI.Graphics();
-    // Simple anchor shape
-    anchor.circle(anchorX, anchorY - 3, 3);
-    anchor.stroke({ color: 0x2c3e50, width: 2 });
-    anchor.moveTo(anchorX, anchorY);
-    anchor.lineTo(anchorX, anchorY + 6);
-    anchor.stroke({ color: 0x2c3e50, width: 2 });
-    anchor.moveTo(anchorX - 4, anchorY + 5);
-    anchor.lineTo(anchorX + 4, anchorY + 5);
-    anchor.stroke({ color: 0x2c3e50, width: 2 });
-    container.addChild(anchor);
+    // Small decorative wave lines under the buoy
+    const waves = new PIXI.Graphics();
+    waves.moveTo(-10, buoyRadius + 3);
+    waves.quadraticCurveTo(-5, buoyRadius + 6, 0, buoyRadius + 3);
+    waves.quadraticCurveTo(5, buoyRadius, 10, buoyRadius + 3);
+    waves.stroke({ color: colors.highlight, width: 1.5, alpha: 0.4 });
+    container.addChild(waves);
 
     this.portsContainer.addChild(container);
   }
