@@ -9,6 +9,8 @@ use wasm_bindgen::prelude::*;
 use crate::game::GameState;
 #[cfg(feature = "wasm")]
 use crate::actions::GameAction;
+#[cfg(feature = "wasm")]
+use crate::bot::{Bot, BotDifficulty};
 
 /// Initialize panic hook for better error messages in browser console
 #[cfg(feature = "wasm")]
@@ -130,6 +132,31 @@ impl WasmGame {
         } else {
             "null".to_string()
         }
+    }
+
+    /// Get a bot's suggested action for a player
+    /// difficulty: "Easy", "Medium", or "Hard"
+    #[wasm_bindgen(js_name = getBotAction)]
+    pub fn get_bot_action(&self, player: u8, difficulty: &str) -> String {
+        let diff = match difficulty {
+            "Easy" => BotDifficulty::Easy,
+            "Medium" => BotDifficulty::Medium,
+            "Hard" => BotDifficulty::Hard,
+            _ => BotDifficulty::Medium,
+        };
+
+        let mut bot = Bot::new(player, diff);
+        match bot.choose_action(&self.state) {
+            Some(action) => serde_json::to_string(&action).unwrap_or_else(|_| "null".to_string()),
+            None => "null".to_string(),
+        }
+    }
+
+    /// Get bot's discard suggestion when player must discard
+    #[wasm_bindgen(js_name = getBotDiscard)]
+    pub fn get_bot_discard(&self, player: u8) -> String {
+        let discard = crate::bot::bot_discard(&self.state, player);
+        serde_json::to_string(&discard).unwrap_or_else(|_| "{}".to_string())
     }
 }
 
