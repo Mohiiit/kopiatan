@@ -1,25 +1,68 @@
 # Kopiatan
 
-A Singapore-themed Catan game built in Rust with WebAssembly support.
+A Singapore-themed Catan game built in Rust with WebAssembly support and real-time multiplayer.
+
+## Screenshots
+
+### Main Menu
+![Main Menu](screenshots/e2e-round2/01-main-menu.png)
+
+### Multiplayer Lobby
+![Multiplayer Lobby](screenshots/e2e-round2/04-alice-room-waiting.png)
+
+### Game Board
+![Game Board](screenshots/e2e-round2/10-setup-complete-bob.png)
+
+### Dice Roll & Resources
+![Dice Roll](screenshots/e2e-round2/11-after-dice-roll.png)
+
+### Robber Phase
+![Robber Phase](screenshots/e2e-round2/13-robber-move-required.png)
+
+## Features
+
+- **Full Catan Gameplay**: Complete implementation of Catan rules
+- **Singapore Theme**: Resources themed after Singapore landmarks
+- **Multiplayer**: Real-time WebSocket multiplayer with room system
+- **Single Player**: Play locally with multiple players
+- **Map Editor**: Create custom board layouts
+- **Save/Load**: Persist game state
+- **AI Bots**: Play against computer opponents
 
 ## Project Structure
 
 ```
 kopiatan/
 ├── crates/
-│   └── catan-core/     # Core game engine (Phase 1)
-├── frontend/           # SolidJS + Pixi.js UI (Phase 2)
-└── server/             # WebSocket multiplayer server (Phase 3)
+│   ├── catan-core/     # Core game engine (Rust)
+│   └── catan-server/   # WebSocket game server
+├── frontend/           # SolidJS + Pixi.js UI
+└── screenshots/        # E2E testing screenshots
 ```
 
-## Phase 1: Core Game Engine ✅
+## Quick Start
 
-The core game engine (`catan-core`) provides:
+### Prerequisites
+- Rust (latest stable)
+- Node.js 18+
+- pnpm
 
-- **Hex Coordinate System**: Axial coordinates for hex grid, vertices, and edges
-- **Board Representation**: Tiles, buildings, harbors, and resource distribution
-- **Player State**: Resources, development cards, victory points
-- **Game State Machine**: Full Catan rules with turn phases, trading, robber, etc.
+### Running the Game
+
+1. **Start the game server:**
+```bash
+cd crates/catan-server
+cargo run
+```
+
+2. **Start the frontend:**
+```bash
+cd frontend
+pnpm install
+pnpm dev
+```
+
+3. Open http://localhost:5174 in your browser
 
 ### Running Tests
 
@@ -27,7 +70,16 @@ The core game engine (`catan-core`) provides:
 cargo test
 ```
 
-### Singapore Theme
+## Game Phases
+
+The game follows standard Catan phases:
+1. **Setup**: Place initial settlements and roads
+2. **PreRoll**: Roll dice to start turn
+3. **MainPhase**: Build, trade, and develop
+4. **RobberMoveRequired**: Move robber when 7 is rolled
+5. **DiscardRequired**: Discard cards when you have 8+ and 7 is rolled
+
+## Singapore Theme
 
 Resources are themed after Singapore landmarks:
 - **Brick** → HDB Estates (construction)
@@ -37,16 +89,16 @@ Resources are themed after Singapore landmarks:
 - **Wool** → Sentosa (leisure/tourism)
 - **Desert** → Bukit Timah (nature reserve)
 
-## Roadmap
+## Development Roadmap
 
 - [x] Phase 1: Core Game Engine
-- [ ] Phase 2: Local Single-Player UI (WASM + SolidJS)
-- [ ] Phase 3: Multiplayer Infrastructure (WebSocket)
-- [ ] Phase 4: Custom Map Editor
-- [ ] Phase 5: Trading & Robber Polish
-- [ ] Phase 6: Bot Players
-- [ ] Phase 7: Persistence & Accounts
-- [ ] Phase 8: Deployment
+- [x] Phase 2: Local Single-Player UI (WASM + SolidJS)
+- [x] Phase 3: Multiplayer Infrastructure (WebSocket)
+- [x] Phase 4: Custom Map Editor
+- [x] Phase 5: Trading & Robber Polish
+- [x] Phase 6: Bot Players
+- [x] Phase 7: Persistence & Accounts
+- [x] Phase 8: Deployment
 
 ## License
 
