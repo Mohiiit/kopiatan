@@ -10,7 +10,7 @@ interface MultiplayerHUDProps {
   onAction: (action: any) => void;
 }
 
-// Visual dice component
+// Visual dice component with enhanced styling
 function Dice(props: { value: number }) {
   const dotPositions: Record<number, [number, number][]> = {
     1: [[50, 50]],
@@ -25,26 +25,28 @@ function Dice(props: { value: number }) {
 
   return (
     <div class="dice" style={{
-      width: "60px",
-      height: "60px",
-      background: "white",
-      "border-radius": "8px",
-      border: "2px solid #333",
+      width: "56px",
+      height: "56px",
+      background: "linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%)",
+      "border-radius": "10px",
+      border: "none",
       position: "relative",
       display: "inline-block",
-      margin: "0 5px",
-      "box-shadow": "2px 2px 5px rgba(0,0,0,0.3)"
+      margin: "0 6px",
+      "box-shadow": "0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.9)",
+      transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
     }}>
       <For each={dots}>
         {([x, y]) => (
           <div style={{
             position: "absolute",
-            width: "12px",
-            height: "12px",
-            background: "#333",
+            width: "10px",
+            height: "10px",
+            background: "#1a1a28",
             "border-radius": "50%",
-            left: `${x - 10}%`,
-            top: `${y - 10}%`,
+            left: `${x - 9}%`,
+            top: `${y - 9}%`,
+            "box-shadow": "inset 0 1px 2px rgba(0,0,0,0.3)",
           }} />
         )}
       </For>
@@ -52,7 +54,7 @@ function Dice(props: { value: number }) {
   );
 }
 
-// Resource icon component
+// Resource icon component with enhanced styling
 function ResourceIcon(props: { resource: string; count: number }) {
   const icons: Record<string, string> = {
     Brick: "🧱",
@@ -63,11 +65,11 @@ function ResourceIcon(props: { resource: string; count: number }) {
   };
 
   const colors: Record<string, string> = {
-    Brick: "#c0392b",
-    Lumber: "#27ae60",
-    Ore: "#7f8c8d",
-    Grain: "#f1c40f",
-    Wool: "#ecf0f1",
+    Brick: "linear-gradient(135deg, #c0392b 0%, #922b21 100%)",
+    Lumber: "linear-gradient(135deg, #27ae60 0%, #1e8449 100%)",
+    Ore: "linear-gradient(135deg, #7f8c8d 0%, #5d6d7e 100%)",
+    Grain: "linear-gradient(135deg, #f1c40f 0%, #d4ac0d 100%)",
+    Wool: "linear-gradient(135deg, #ecf0f1 0%, #d5dbdb 100%)",
   };
 
   // Use dark text for light backgrounds (Wool, Grain)
@@ -77,16 +79,19 @@ function ResourceIcon(props: { resource: string; count: number }) {
     <div class="resource-item" style={{
       display: "flex",
       "align-items": "center",
-      gap: "3px",
-      padding: "4px 6px",
+      gap: "4px",
+      padding: "6px 10px",
       background: colors[props.resource] || "#666",
-      "border-radius": "4px",
+      "border-radius": "8px",
       "font-size": "13px",
-      "min-width": "40px",
-      color: needsDarkText ? "#333" : "white",
+      "min-width": "48px",
+      color: needsDarkText ? "#1a1a28" : "white",
+      "box-shadow": "0 2px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)",
+      transition: "transform 0.15s ease, box-shadow 0.15s ease",
+      cursor: "default",
     }}>
-      <span style={{ "font-size": "14px" }}>{icons[props.resource] || "?"}</span>
-      <span style={{ "font-weight": "bold" }}>{props.count}</span>
+      <span style={{ "font-size": "15px", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.2))" }}>{icons[props.resource] || "?"}</span>
+      <span style={{ "font-weight": "700", "font-size": "14px", "text-shadow": needsDarkText ? "none" : "0 1px 1px rgba(0,0,0,0.2)" }}>{props.count}</span>
     </div>
   );
 }
@@ -195,24 +200,40 @@ export const MultiplayerHUD: Component<MultiplayerHUDProps> = (props) => {
 
   return (
     <div class="multiplayer-hud" style={{
-      background: "#2a2a3e",
-      "border-radius": "12px",
-      padding: "16px",
-      color: "white",
+      background: "#1a1a28",
+      "border-radius": "20px",
+      padding: "20px",
+      color: "#f8f8f2",
+      border: "1px solid rgba(255,255,255,0.06)",
+      "box-shadow": "0 4px 20px rgba(0,0,0,0.4)",
     }}>
       {/* Turn Indicator */}
-      <div class="turn-info" style={{ "margin-bottom": "16px" }}>
-        <h2 style={{ margin: "0 0 8px 0", "font-size": "20px" }}>
+      <div class="turn-info" style={{ "margin-bottom": "20px" }}>
+        <h2 style={{
+          margin: "0 0 8px 0",
+          "font-size": "1.4rem",
+          "font-family": "'Playfair Display', Georgia, serif",
+          "font-weight": "600",
+          color: "#f8f8f2",
+        }}>
           {currentPlayerName()}'s Turn
         </h2>
         <p style={{
           margin: 0,
-          color: props.isMyTurn ? "#f39c12" : "#95a5a6",
-          "font-weight": "bold",
+          color: props.isMyTurn ? "#f5a623" : "#606070",
+          "font-weight": "600",
+          "font-size": "0.95rem",
+          "text-transform": "uppercase",
+          "letter-spacing": "0.03em",
         }}>
           {props.isMyTurn ? "Your turn!" : "Waiting..."}
         </p>
-        <p style={{ margin: "4px 0 0 0", color: "#aaa", "font-size": "14px" }}>
+        <p style={{
+          margin: "6px 0 0 0",
+          color: "#a0a0b0",
+          "font-size": "0.85rem",
+          "font-weight": "500",
+        }}>
           Phase: {phaseInfo().text}
         </p>
       </div>
@@ -221,21 +242,41 @@ export const MultiplayerHUD: Component<MultiplayerHUDProps> = (props) => {
       <Show when={props.gameState?.dice_roll}>
         <div class="dice-display" style={{
           "text-align": "center",
-          padding: "12px",
-          background: "#1a1a2e",
-          "border-radius": "8px",
-          "margin-bottom": "16px",
+          padding: "16px",
+          background: "#242436",
+          "border-radius": "12px",
+          "margin-bottom": "20px",
+          border: "1px solid rgba(255,255,255,0.06)",
         }}>
-          <p style={{ margin: "0 0 8px 0", color: "#aaa", "font-size": "12px" }}>Last Roll</p>
+          <p style={{
+            margin: "0 0 12px 0",
+            color: "#606070",
+            "font-size": "0.75rem",
+            "text-transform": "uppercase",
+            "letter-spacing": "0.08em",
+            "font-weight": "600",
+          }}>Last Roll</p>
           <div style={{ display: "flex", "justify-content": "center", "align-items": "center" }}>
             <Dice value={props.gameState.dice_roll[0]} />
-            <span style={{ margin: "0 10px", "font-size": "24px", color: "#f39c12" }}>+</span>
-            <Dice value={props.gameState.dice_roll[1]} />
-            <span style={{ margin: "0 10px", "font-size": "24px", color: "#f39c12" }}>=</span>
             <span style={{
-              "font-size": "32px",
-              "font-weight": "bold",
-              color: (props.gameState.dice_roll[0] + props.gameState.dice_roll[1] === 7) ? "#e74c3c" : "#2ecc71"
+              margin: "0 8px",
+              "font-size": "1.5rem",
+              color: "#f5a623",
+              "font-weight": "300",
+            }}>+</span>
+            <Dice value={props.gameState.dice_roll[1]} />
+            <span style={{
+              margin: "0 8px",
+              "font-size": "1.5rem",
+              color: "#f5a623",
+              "font-weight": "300",
+            }}>=</span>
+            <span style={{
+              "font-size": "2rem",
+              "font-weight": "700",
+              "font-family": "'Playfair Display', Georgia, serif",
+              color: (props.gameState.dice_roll[0] + props.gameState.dice_roll[1] === 7) ? "#ff6b6b" : "#2ecc71",
+              "text-shadow": "0 2px 4px rgba(0,0,0,0.3)",
             }}>
               {props.gameState.dice_roll[0] + props.gameState.dice_roll[1]}
             </span>
@@ -245,27 +286,31 @@ export const MultiplayerHUD: Component<MultiplayerHUDProps> = (props) => {
 
       {/* Action Buttons */}
       <Show when={props.isMyTurn}>
-        <div class="actions" style={{ "margin-bottom": "16px" }}>
+        <div class="actions" style={{ "margin-bottom": "20px" }}>
           <Show when={canRoll()}>
             <button
               onClick={() => props.onAction("RollDice")}
               style={{
                 width: "100%",
-                padding: "12px",
-                background: "#2ecc71",
+                padding: "14px 20px",
+                background: "linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)",
                 border: "none",
-                "border-radius": "8px",
+                "border-radius": "12px",
                 color: "white",
-                "font-size": "16px",
-                "font-weight": "bold",
+                "font-size": "1rem",
+                "font-weight": "700",
                 cursor: "pointer",
                 display: "flex",
                 "align-items": "center",
                 "justify-content": "center",
-                gap: "8px",
+                gap: "10px",
+                "box-shadow": "0 4px 15px rgba(46, 204, 113, 0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
+                transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                "text-shadow": "0 1px 2px rgba(0,0,0,0.2)",
+                "letter-spacing": "0.02em",
               }}
             >
-              <span style={{ "font-size": "20px" }}>🎲</span> Roll Dice
+              <span style={{ "font-size": "1.25rem" }}>🎲</span> Roll Dice
             </button>
           </Show>
 
@@ -274,14 +319,17 @@ export const MultiplayerHUD: Component<MultiplayerHUDProps> = (props) => {
               onClick={() => props.onAction("EndTurn")}
               style={{
                 width: "100%",
-                padding: "12px",
-                background: "#e67e22",
+                padding: "14px 20px",
+                background: "linear-gradient(135deg, #f5a623 0%, #d68910 100%)",
                 border: "none",
-                "border-radius": "8px",
-                color: "white",
-                "font-size": "16px",
-                "font-weight": "bold",
+                "border-radius": "12px",
+                color: "#1a1a28",
+                "font-size": "1rem",
+                "font-weight": "700",
                 cursor: "pointer",
+                "box-shadow": "0 4px 15px rgba(245, 166, 35, 0.35), inset 0 1px 0 rgba(255,255,255,0.2)",
+                transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                "letter-spacing": "0.02em",
                 "margin-top": "8px",
               }}
             >
