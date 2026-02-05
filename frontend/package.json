@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run build:wasm && tsc -b && vite build",
+    "build:frontend": "tsc -b && vite build",
     "build:wasm": "cd .. && wasm-pack build crates/catan-core --target web --features wasm",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "tsc -b --noEmit"
   },
   "dependencies": {
     "catan-core": "file:../crates/catan-core/pkg",
