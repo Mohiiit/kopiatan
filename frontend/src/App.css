@@ -411,6 +411,10 @@ header p {
   background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
 }
 
+.menu-btn.tertiary {
+  background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+}
+
 .back-btn {
   background: transparent;
   border: 1px solid #666;
@@ -1046,6 +1050,231 @@ header p {
   color: #888;
   border-radius: 6px;
   cursor: pointer;
+}
+
+/* Stats Panel */
+.stats-panel {
+  max-width: 800px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.stats-header h2 {
+  margin: 0;
+}
+
+.stats-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stats-tabs button {
+  flex: 1;
+  padding: 1rem;
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.stats-tabs button:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stats-tabs button.active {
+  color: #f39c12;
+  border-bottom: 2px solid #f39c12;
+}
+
+.stats-content {
+  padding: 1.5rem;
+  min-height: 300px;
+}
+
+.empty-message {
+  text-align: center;
+  color: #666;
+  padding: 3rem;
+}
+
+/* Saved Games */
+.game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.game-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.game-card:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.game-info h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.game-meta {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.game-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.game-actions button {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  opacity: 0.6;
+}
+
+.game-actions button:hover {
+  opacity: 1;
+}
+
+.game-actions button.delete:hover {
+  color: #e74c3c;
+}
+
+/* Player Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.player-stat-card {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.player-stat-card h3 {
+  margin: 0 0 0.75rem;
+  color: #f39c12;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+.stat-row span:first-child {
+  color: #888;
+}
+
+.last-played {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: #666;
+}
+
+/* Leaderboard */
+.leaderboard table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard th,
+.leaderboard td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.leaderboard th {
+  background: rgba(0, 0, 0, 0.2);
+  color: #888;
+  font-weight: normal;
+  font-size: 0.875rem;
+}
+
+.leaderboard td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.leaderboard tr.rank-1 td {
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.leaderboard tr.rank-2 td {
+  background: rgba(192, 192, 192, 0.1);
+}
+
+.leaderboard tr.rank-3 td {
+  background: rgba(205, 127, 50, 0.1);
+}
+
+/* Data Management */
+.data-management {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.data-management h4 {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: #888;
+}
+
+.data-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.data-actions button,
+.data-actions .file-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid #444;
+  color: #f0f0f0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.data-actions button:hover,
+.data-actions .file-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.data-actions button.danger {
+  background: rgba(231, 76, 60, 0.2);
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
+.data-actions button.danger:hover {
+  background: rgba(231, 76, 60, 0.4);
 }
 
 /* Map Editor */

@@ -3,6 +3,7 @@ import { Board } from "./components/Board";
 import { PlayerHUD } from "./components/PlayerHUD";
 import { Lobby } from "./components/Lobby";
 import { MapEditor } from "./components/MapEditor";
+import { StatsPanel } from "./components/StatsPanel";
 import { gameStore, initializeGame, isFinished, getWinner, getVictoryPoints } from "./stores/gameStore";
 import {
   multiplayerStore,
@@ -12,7 +13,7 @@ import {
 } from "./stores/multiplayerStore";
 import "./App.css";
 
-type GameMode = "menu" | "singleplayer-setup" | "singleplayer" | "multiplayer-lobby" | "multiplayer" | "map-editor";
+type GameMode = "menu" | "singleplayer-setup" | "singleplayer" | "multiplayer-lobby" | "multiplayer" | "map-editor" | "stats";
 
 function App() {
   const [mode, setMode] = createSignal<GameMode>("menu");
@@ -87,6 +88,12 @@ function App() {
             >
               🗺️ Map Editor
             </button>
+            <button
+              onClick={() => setMode("stats")}
+              class="menu-btn tertiary"
+            >
+              📊 Stats & Saved Games
+            </button>
           </div>
         </div>
       </Show>
@@ -94,6 +101,18 @@ function App() {
       {/* Map Editor */}
       <Show when={mode() === "map-editor"}>
         <MapEditor onClose={() => setMode("menu")} />
+      </Show>
+
+      {/* Stats Panel */}
+      <Show when={mode() === "stats"}>
+        <StatsPanel
+          onLoadGame={(state) => {
+            // TODO: Load saved game state
+            console.log("Load game:", state);
+            setMode("menu");
+          }}
+          onClose={() => setMode("menu")}
+        />
       </Show>
 
       {/* Single Player Setup */}
