@@ -407,6 +407,10 @@ header p {
   box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
 }
 
+.menu-btn.secondary {
+  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+}
+
 .back-btn {
   background: transparent;
   border: 1px solid #666;
@@ -775,6 +779,192 @@ header p {
   font-size: 1.1rem;
   font-weight: bold;
   color: #f39c12;
+}
+
+/* Map Editor */
+.map-editor {
+  max-width: 1000px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.editor-header h2 {
+  margin: 0;
+}
+
+.close-btn {
+  padding: 0.5rem 1rem;
+  background: rgba(231, 76, 60, 0.3);
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.close-btn:hover {
+  background: rgba(231, 76, 60, 0.5);
+}
+
+.editor-content {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.canvas-container {
+  flex-shrink: 0;
+}
+
+.canvas-container canvas {
+  border-radius: 8px;
+  border: 2px solid #333;
+}
+
+.editor-sidebar {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.editor-sidebar .section {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.editor-sidebar .section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.editor-sidebar label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  color: #888;
+}
+
+.editor-sidebar input,
+.editor-sidebar select {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #2a2a4a;
+  color: #f0f0f0;
+  font-size: 1rem;
+}
+
+.tile-editor {
+  border: 2px solid #f39c12;
+}
+
+.editor-sidebar .hint {
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}
+
+.editor-sidebar .errors {
+  border: 1px solid #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.editor-sidebar .errors ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.editor-sidebar .errors li {
+  color: #e74c3c;
+  font-size: 0.875rem;
+}
+
+.editor-sidebar .actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.editor-sidebar .btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0f0f0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.editor-sidebar .btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.editor-sidebar .btn-primary {
+  background: #27ae60;
+  border-color: #27ae60;
+}
+
+.editor-sidebar .btn-primary:hover {
+  background: #2ecc71;
+}
+
+.editor-sidebar .file-btn {
+  text-align: center;
+}
+
+.saved-maps .map-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.saved-maps .map-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.saved-maps .map-item span {
+  font-size: 0.875rem;
+}
+
+.saved-maps .map-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.saved-maps .map-actions button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: none;
+  border-radius: 4px;
+  background: #3498db;
+  color: white;
+  cursor: pointer;
+}
+
+.saved-maps .map-actions button.delete {
+  background: #e74c3c;
 }
 
 /* Responsive */

@@ -2,6 +2,7 @@ import { createSignal, Show } from "solid-js";
 import { Board } from "./components/Board";
 import { PlayerHUD } from "./components/PlayerHUD";
 import { Lobby } from "./components/Lobby";
+import { MapEditor } from "./components/MapEditor";
 import { gameStore, initializeGame, isFinished, getWinner, getVictoryPoints } from "./stores/gameStore";
 import {
   multiplayerStore,
@@ -11,7 +12,7 @@ import {
 } from "./stores/multiplayerStore";
 import "./App.css";
 
-type GameMode = "menu" | "singleplayer-setup" | "singleplayer" | "multiplayer-lobby" | "multiplayer";
+type GameMode = "menu" | "singleplayer-setup" | "singleplayer" | "multiplayer-lobby" | "multiplayer" | "map-editor";
 
 function App() {
   const [mode, setMode] = createSignal<GameMode>("menu");
@@ -80,8 +81,19 @@ function App() {
             >
               🌐 Multiplayer Online
             </button>
+            <button
+              onClick={() => setMode("map-editor")}
+              class="menu-btn secondary"
+            >
+              🗺️ Map Editor
+            </button>
           </div>
         </div>
+      </Show>
+
+      {/* Map Editor */}
+      <Show when={mode() === "map-editor"}>
+        <MapEditor onClose={() => setMode("menu")} />
       </Show>
 
       {/* Single Player Setup */}
