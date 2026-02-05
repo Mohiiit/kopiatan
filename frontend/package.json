@@ -1,0 +1,23 @@
+{
+  "name": "kopiatan-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run build:wasm && tsc -b && vite build",
+    "build:wasm": "cd .. && wasm-pack build crates/catan-core --target web --features wasm",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "catan-core": "file:../crates/catan-core/pkg",
+    "pixi.js": "^8.16.0",
+    "solid-js": "^1.9.10"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4",
+    "vite-plugin-solid": "^2.11.10"
+  }
+}

@@ -24,6 +24,8 @@ pub mod board;
 pub mod game;
 pub mod hex;
 pub mod player;
+#[cfg(feature = "wasm")]
+pub mod wasm;
 
 // Re-export commonly used types
 pub use actions::{GameAction, GameEvent, TradeOffer};
