@@ -7,28 +7,29 @@ A Singapore-themed Catan game built in Rust with WebAssembly support and real-ti
 ### Main Menu
 ![Main Menu](screenshots/new-design/main-menu.png)
 
-### Multiplayer Lobby
-![Multiplayer Lobby](screenshots/new-design/alice-room-waiting.png)
-
 ### Game Board - Setup Phase
 ![Game Board Setup](screenshots/new-design/settlement-placement.png)
 
-### Game Board - Complete Setup
+### Game Board - Settlements Placed
 ![Setup Complete](screenshots/new-design/setup-complete.png)
-
-### Dice Roll & Main Phase
-![Dice Roll](screenshots/new-design/after-dice-roll.png)
 
 ## Features
 
-- **Full Catan Gameplay**: Complete implementation of Catan rules
-- **Singapore Theme**: Resources themed after Singapore landmarks
-- **Multiplayer**: Real-time WebSocket multiplayer with room system
-- **Single Player**: Play locally with multiple players
-- **Map Editor**: Create custom board layouts
-- **Save/Load**: Persist game state
-- **AI Bots**: Play against computer opponents
-- **Polished UI**: Enhanced visuals with 3D-effect tiles, animated highlights, and placement feedback
+- **Full Catan Gameplay**: Complete implementation of Catan rules including setup, trading, building, robber, and victory conditions
+- **Singapore Theme**: Resources themed after Singapore landmarks with custom hex tile patterns
+- **"Tropical Night Market" Design**: Dark navy UI with amber/gold accents, gradient buttons, and glowing effects
+- **Multiplayer**: Real-time WebSocket multiplayer with room system and chat
+- **Single Player**: Play locally with multiple players on the same machine
+- **Map Editor**: Create and save custom board layouts
+- **Save/Load**: Persist game state across sessions
+- **Polished Visuals**: Procedural hex tile patterns, 3D-effect buildings, glowing port buoys, animated highlights, dice with dot displays, and card-style resource display
+
+## Tech Stack
+
+- **Game Engine**: Rust (compiled to WebAssembly via wasm-bindgen)
+- **Frontend**: SolidJS + Pixi.js for WebGL board rendering
+- **Server**: Rust WebSocket server for multiplayer
+- **Styling**: CSS custom properties design system with Playfair Display + DM Sans typography
 
 ## Project Structure
 
@@ -38,7 +39,14 @@ kopiatan/
 │   ├── catan-core/     # Core game engine (Rust)
 │   └── catan-server/   # WebSocket game server
 ├── frontend/           # SolidJS + Pixi.js UI
-└── screenshots/        # E2E testing screenshots
+│   ├── src/
+│   │   ├── game/       # Pixi.js board renderer
+│   │   ├── components/ # SolidJS UI components
+│   │   ├── stores/     # Game & multiplayer state
+│   │   └── utils/      # Sound manager, helpers
+│   └── public/
+├── reference/          # Design reference screenshots
+└── screenshots/        # App screenshots
 ```
 
 ## Quick Start
@@ -63,7 +71,7 @@ pnpm install
 pnpm dev
 ```
 
-3. Open http://localhost:5174 in your browser
+3. Open http://localhost:5173 in your browser
 
 ### Running Tests
 
@@ -83,23 +91,12 @@ The game follows standard Catan phases:
 ## Singapore Theme
 
 Resources are themed after Singapore landmarks:
-- **Brick** → HDB Estates (construction)
-- **Lumber** → Botanic Gardens (nature reserves)
-- **Ore** → Jurong Industrial (heavy industry)
-- **Grain** → Hawker Centers (food culture)
-- **Wool** → Sentosa (leisure/tourism)
-- **Desert** → Bukit Timah (nature reserve)
-
-## Development Roadmap
-
-- [x] Phase 1: Core Game Engine
-- [x] Phase 2: Local Single-Player UI (WASM + SolidJS)
-- [x] Phase 3: Multiplayer Infrastructure (WebSocket)
-- [x] Phase 4: Custom Map Editor
-- [x] Phase 5: Trading & Robber Polish
-- [x] Phase 6: Bot Players
-- [x] Phase 7: Persistence & Accounts
-- [x] Phase 8: Deployment
+- **Brick** (HDB Estates) - warm red hex tiles with brick patterns
+- **Lumber** (Botanic Gardens) - lush green with tree canopy patterns
+- **Ore** (Jurong Industrial) - steel gray with angular rock shapes
+- **Grain** (Hawker Centers) - golden yellow with wheat stalk patterns
+- **Wool** (Sentosa Resort) - tropical teal with wave patterns
+- **Desert** (Bukit Timah) - sandy beige with dune contours
 
 ## License
 

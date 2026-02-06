@@ -229,7 +229,7 @@ export const Board: Component<BoardProps> = (props) => {
       ref={canvasRef}
       width={props.width}
       height={props.height}
-      style={{ border: "2px solid #333" }}
+      class="game-canvas"
     />
   );
 };

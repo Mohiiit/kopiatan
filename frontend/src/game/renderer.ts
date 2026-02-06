@@ -290,6 +290,9 @@ export class BoardRenderer {
     hexFill.fill({ color: colors.base });
     container.addChild(hexFill);
 
+    // Draw resource-specific pattern overlay
+    this.drawTilePattern(container, colorKey, colors, this.hexSize);
+
     // Draw hex inner highlight (top-left)
     const highlight = new PIXI.Graphics();
     highlight.poly(hexPoints(this.hexSize * 0.85));
@@ -331,27 +334,33 @@ export class BoardRenderer {
 
       // Draw shadow for depth
       const iconShadow = new PIXI.Graphics();
-      iconShadow.circle(1, 2, 13);
-      iconShadow.fill({ color: 0x000000, alpha: 0.4 });
+      iconShadow.circle(1, 2, 15);
+      iconShadow.fill({ color: 0x000000, alpha: 0.45 });
       iconContainer.addChild(iconShadow);
 
       // Draw background circle - use a contrasting dark color for visibility
       const bgCircle = new PIXI.Graphics();
-      bgCircle.circle(0, 0, 13);
-      bgCircle.fill({ color: 0x2c3e50, alpha: 0.9 });
+      bgCircle.circle(0, 0, 15);
+      bgCircle.fill({ color: 0x1a2634, alpha: 0.95 });
       iconContainer.addChild(bgCircle);
+
+      // Draw inner highlight ring for depth
+      const innerRing = new PIXI.Graphics();
+      innerRing.circle(-1, -1, 12);
+      innerRing.fill({ color: 0x2c3e50, alpha: 0.4 });
+      iconContainer.addChild(innerRing);
 
       // Draw border ring for extra contrast
       const borderRing = new PIXI.Graphics();
-      borderRing.circle(0, 0, 13);
-      borderRing.stroke({ color: 0xffffff, width: 2, alpha: 0.8 });
+      borderRing.circle(0, 0, 15);
+      borderRing.stroke({ color: 0xffffff, width: 2.5, alpha: 0.85 });
       iconContainer.addChild(borderRing);
 
       // Draw the emoji icon - larger and fully opaque
       const icon = new PIXI.Text({
         text: symbol,
         style: {
-          fontSize: 14,
+          fontSize: 16,
           fontFamily: 'system-ui',
         }
       });
@@ -373,6 +382,243 @@ export class BoardRenderer {
     }
   }
 
+  /**
+   * Draws resource-specific procedural patterns on hex tiles.
+   * Patterns are subtle overlays drawn between the base fill and the inner highlight.
+   * Uses lighter/darker variants of the base color at low alpha for subtlety.
+   */
+  private drawTilePattern(
+    container: PIXI.Container,
+    colorKey: string,
+    colors: { base: number; highlight: number; shadow: number },
+    size: number
+  ) {
+    const pattern = new PIXI.Graphics();
+    const patternAlpha = 0.2;
+    const innerSize = size * 0.92; // Stay well within hex bounds
+
+    // Helper to check if a point is inside the hex (pointy-top)
+    // We use a simpler approach: just keep pattern elements within a conservative radius
+    const maxR = innerSize * 0.85;
+
+    switch (colorKey) {
+      case "Brick": {
+        // Brick pattern: small rectangles arranged in offset rows (HDB Estates)
+        const brickW = 12;
+        const brickH = 6;
+        const gap = 1.5;
+        const rows = 9;
+        const cols = 7;
+        const startX = -(cols * (brickW + gap)) / 2;
+        const startY = -(rows * (brickH + gap)) / 2;
+
+        for (let row = 0; row < rows; row++) {
+          const offsetX = row % 2 === 0 ? 0 : (brickW + gap) / 2;
+          for (let col = 0; col < cols; col++) {
+            const bx = startX + col * (brickW + gap) + offsetX;
+            const by = startY + row * (brickH + gap);
+            const cx = bx + brickW / 2;
+            const cy = by + brickH / 2;
+            // Only draw if center is within hex
+            if (Math.sqrt(cx * cx + cy * cy) < maxR) {
+              pattern.rect(bx, by, brickW, brickH);
+              pattern.fill({ color: colors.shadow, alpha: patternAlpha });
+              // Mortar line highlight on top edge
+              pattern.moveTo(bx, by);
+              pattern.lineTo(bx + brickW, by);
+              pattern.stroke({ color: colors.highlight, width: 0.5, alpha: patternAlpha * 0.8 });
+            }
+          }
+        }
+        break;
+      }
+
+      case "Lumber": {
+        // Tree canopy pattern: circles of varying sizes (Botanic Gardens)
+        const trees = [
+          { x: 0, y: -15, r: 14 },
+          { x: -18, y: 8, r: 11 },
+          { x: 16, y: 10, r: 12 },
+          { x: -8, y: -30, r: 9 },
+          { x: 22, y: -18, r: 8 },
+          { x: -22, y: -14, r: 10 },
+          { x: 8, y: 28, r: 9 },
+          { x: -14, y: 24, r: 8 },
+          { x: 28, y: -4, r: 7 },
+        ];
+        trees.forEach((t) => {
+          if (Math.sqrt(t.x * t.x + t.y * t.y) + t.r < maxR) {
+            // Tree shadow (slightly offset)
+            pattern.circle(t.x + 1, t.y + 1, t.r);
+            pattern.fill({ color: colors.shadow, alpha: patternAlpha * 0.6 });
+            // Main canopy
+            pattern.circle(t.x, t.y, t.r);
+            pattern.fill({ color: colors.highlight, alpha: patternAlpha });
+            // Inner highlight (light dapple)
+            pattern.circle(t.x - t.r * 0.25, t.y - t.r * 0.25, t.r * 0.5);
+            pattern.fill({ color: colors.highlight, alpha: patternAlpha * 0.7 });
+          }
+        });
+        break;
+      }
+
+      case "Ore": {
+        // Angular rock/mountain shapes (Jurong Industrial)
+        const rocks = [
+          // Large central mountain
+          [0, 5, -15, -20, -30, 5],
+          [0, 5, 15, -20, 30, 5],
+          // Smaller rocks scattered
+          [-25, 15, -18, -5, -10, 15],
+          [12, 20, 20, 0, 28, 20],
+          [-8, -15, 0, -35, 8, -15],
+          [20, -10, 28, -25, 35, -10],
+          [-30, -5, -22, -20, -15, -5],
+        ];
+        rocks.forEach((r) => {
+          const cx = (r[0] + r[2] + r[4]) / 3;
+          const cy = (r[1] + r[3] + r[5]) / 3;
+          if (Math.sqrt(cx * cx + cy * cy) < maxR * 0.85) {
+            // Rock face (darker)
+            pattern.poly(r);
+            pattern.fill({ color: colors.shadow, alpha: patternAlpha });
+            // Highlight edge on left side
+            pattern.moveTo(r[0], r[1]);
+            pattern.lineTo(r[2], r[3]);
+            pattern.stroke({ color: colors.highlight, width: 1, alpha: patternAlpha * 0.8 });
+          }
+        });
+        break;
+      }
+
+      case "Grain": {
+        // Wheat stalk patterns: vertical lines with small V shapes (Hawker Centers)
+        const stalks = [-28, -18, -8, 2, 12, 22];
+        stalks.forEach((sx) => {
+          const baseY = 25;
+          const topY = -25;
+          if (Math.abs(sx) < maxR * 0.7) {
+            // Stalk stem
+            pattern.moveTo(sx, baseY);
+            pattern.lineTo(sx, topY);
+            pattern.stroke({ color: colors.shadow, width: 1.5, alpha: patternAlpha });
+
+            // Wheat kernels as small V shapes along the stalk
+            for (let ky = topY + 4; ky < topY + 22; ky += 5) {
+              // Left kernel
+              pattern.moveTo(sx, ky);
+              pattern.lineTo(sx - 4, ky - 3);
+              pattern.stroke({ color: colors.highlight, width: 1, alpha: patternAlpha });
+              // Right kernel
+              pattern.moveTo(sx, ky);
+              pattern.lineTo(sx + 4, ky - 3);
+              pattern.stroke({ color: colors.highlight, width: 1, alpha: patternAlpha });
+            }
+
+            // Small seed head at top
+            pattern.circle(sx, topY, 2);
+            pattern.fill({ color: colors.highlight, alpha: patternAlpha * 0.8 });
+          }
+        });
+        break;
+      }
+
+      case "Wool": {
+        // Wave/cloud patterns: gentle horizontal curved lines (Sentosa Resort)
+        const waveRows = [-30, -18, -6, 6, 18, 30];
+        waveRows.forEach((wy) => {
+          const amplitude = 4;
+          const wavelength = 14;
+          pattern.moveTo(-maxR, wy);
+          for (let wx = -maxR; wx < maxR; wx += wavelength) {
+            const midX = wx + wavelength / 2;
+            const endX = wx + wavelength;
+            if (Math.sqrt(midX * midX + wy * wy) < maxR) {
+              pattern.quadraticCurveTo(midX, wy - amplitude, endX, wy);
+            }
+          }
+          pattern.stroke({ color: colors.highlight, width: 1.5, alpha: patternAlpha });
+
+          // Second offset wave for cloud-like softness
+          pattern.moveTo(-maxR + 7, wy + 4);
+          for (let wx = -maxR + 7; wx < maxR; wx += wavelength) {
+            const midX = wx + wavelength / 2;
+            const endX = wx + wavelength;
+            if (Math.sqrt(midX * midX + (wy + 4) * (wy + 4)) < maxR) {
+              pattern.quadraticCurveTo(midX, wy + 4 + amplitude, endX, wy + 4);
+            }
+          }
+          pattern.stroke({ color: colors.shadow, width: 1, alpha: patternAlpha * 0.6 });
+        });
+        break;
+      }
+
+      case "Desert": {
+        // Sand dune contour lines (Bukit Timah)
+        const contours = [
+          { yCenter: -20, amplitude: 6 },
+          { yCenter: -8, amplitude: 8 },
+          { yCenter: 5, amplitude: 5 },
+          { yCenter: 16, amplitude: 7 },
+          { yCenter: 28, amplitude: 4 },
+        ];
+        contours.forEach((c) => {
+          pattern.moveTo(-maxR, c.yCenter);
+          for (let cx = -maxR; cx <= maxR; cx += 4) {
+            const ny = c.yCenter + Math.sin(cx * 0.08) * c.amplitude + Math.sin(cx * 0.03) * c.amplitude * 0.5;
+            if (Math.sqrt(cx * cx + ny * ny) < maxR) {
+              pattern.lineTo(cx, ny);
+            }
+          }
+          pattern.stroke({ color: colors.shadow, width: 1, alpha: patternAlpha * 0.7 });
+        });
+
+        // Subtle dot stippling for sandy texture
+        const stipplePositions = [
+          [-15, -25], [10, -22], [25, -10], [-20, 0], [5, 5],
+          [20, 12], [-10, 18], [15, 25], [-25, 10], [0, -12],
+          [-30, -8], [30, 2], [-5, 30], [22, -20], [-18, 22],
+        ];
+        stipplePositions.forEach(([sx, sy]) => {
+          if (Math.sqrt(sx * sx + sy * sy) < maxR) {
+            pattern.circle(sx, sy, 1);
+            pattern.fill({ color: colors.shadow, alpha: patternAlpha * 0.5 });
+          }
+        });
+        break;
+      }
+
+      case "Ocean": {
+        // Wave ripple pattern: concentric arc rows (Singapore Strait)
+        for (let wy = -35; wy <= 35; wy += 10) {
+          for (let wx = -35; wx <= 35; wx += 16) {
+            const ox = wx + (Math.floor(wy / 10) % 2 === 0 ? 0 : 8);
+            if (Math.sqrt(ox * ox + wy * wy) < maxR * 0.9) {
+              // Small wave crest
+              pattern.moveTo(ox - 6, wy);
+              pattern.quadraticCurveTo(ox, wy - 4, ox + 6, wy);
+              pattern.stroke({ color: colors.highlight, width: 1.5, alpha: patternAlpha });
+            }
+          }
+        }
+
+        // Additional subtle horizontal shimmer lines
+        for (let sy = -30; sy <= 30; sy += 14) {
+          pattern.moveTo(-maxR * 0.6, sy + 5);
+          pattern.quadraticCurveTo(0, sy + 8, maxR * 0.6, sy + 5);
+          pattern.stroke({ color: colors.highlight, width: 0.8, alpha: patternAlpha * 0.5 });
+        }
+        break;
+      }
+    }
+
+    // Mask the pattern to hex bounds using a hex-shaped mask drawn on the pattern itself
+    // We achieve clipping by drawing the pattern first, then overlaying the exterior
+    // Actually, Pixi.js Graphics doesn't support true clipping easily, so we use
+    // the pattern Graphics as-is since we've carefully bounded all elements within maxR.
+    container.addChild(pattern);
+  }
+
   private drawDiceNumber(pos: { x: number; y: number }, number: number, hasRobber: boolean) {
     const isHot = number === 6 || number === 8;
     const yOffset = hasRobber ? -8 : 8;
@@ -381,28 +627,34 @@ export class BoardRenderer {
     const container = new PIXI.Container();
     container.position.set(pos.x, pos.y + yOffset);
 
+    // Outer drop shadow (soft, larger spread)
+    const outerShadow = new PIXI.Graphics();
+    outerShadow.circle(1, 3, 20);
+    outerShadow.fill({ color: 0x000000, alpha: 0.2 });
+    container.addChild(outerShadow);
+
     // Circle shadow
     const shadow = new PIXI.Graphics();
-    shadow.circle(1, 2, 16);
-    shadow.fill({ color: 0x000000, alpha: 0.3 });
+    shadow.circle(1, 2, 18);
+    shadow.fill({ color: 0x000000, alpha: 0.35 });
     container.addChild(shadow);
 
-    // Circle background with gradient effect
+    // Circle background with gradient effect - cream
     const circleBg = new PIXI.Graphics();
-    circleBg.circle(0, 0, 16);
+    circleBg.circle(0, 0, 18);
     circleBg.fill({ color: 0xfaf3e0 });
     container.addChild(circleBg);
 
-    // Inner highlight
+    // Inner highlight (top-left sheen)
     const circleHighlight = new PIXI.Graphics();
-    circleHighlight.circle(-2, -2, 12);
-    circleHighlight.fill({ color: 0xffffff, alpha: 0.4 });
+    circleHighlight.circle(-3, -3, 13);
+    circleHighlight.fill({ color: 0xffffff, alpha: 0.35 });
     container.addChild(circleHighlight);
 
     // Circle border
     const circleBorder = new PIXI.Graphics();
-    circleBorder.circle(0, 0, 16);
-    circleBorder.stroke({ color: isHot ? 0xc0392b : 0x7f8c8d, width: 2 });
+    circleBorder.circle(0, 0, 18);
+    circleBorder.stroke({ color: isHot ? 0xc0392b : 0x7f8c8d, width: 2.5 });
     container.addChild(circleBorder);
 
     // Number text
@@ -418,13 +670,13 @@ export class BoardRenderer {
     text.anchor.set(0.5);
     container.addChild(text);
 
-    // Probability dots
+    // Probability dots - larger and more visible
     const dots = Math.min(6 - Math.abs(7 - number), 5);
     const dotContainer = new PIXI.Container();
     for (let i = 0; i < dots; i++) {
       const dot = new PIXI.Graphics();
-      dot.circle((i - (dots - 1) / 2) * 4, 10, 1.5);
-      dot.fill({ color: isHot ? 0xc0392b : 0x7f8c8d });
+      dot.circle((i - (dots - 1) / 2) * 5, 12, 2);
+      dot.fill({ color: isHot ? 0xc0392b : 0x5d6d7e });
       dotContainer.addChild(dot);
     }
     container.addChild(dotContainer);

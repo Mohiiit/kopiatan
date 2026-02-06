@@ -104,7 +104,7 @@ function App() {
   }
 
   return (
-    <div class="app">
+    <div class={`app ${mode() === "singleplayer" || mode() === "multiplayer" ? "in-game" : ""}`}>
       <header>
         <div class="header-content">
           <div class="header-title">
@@ -222,7 +222,7 @@ function App() {
       <Show when={mode() === "singleplayer" && !gameStore.isLoading}>
         <div class="game-container">
           <div class="board-wrapper">
-            <Board width={800} height={700} />
+            <Board width={880} height={760} />
           </div>
 
           <div class="sidebar">
@@ -237,25 +237,38 @@ function App() {
               </div>
             </Show>
 
-            <div class="all-players">
-              <h3>All Players</h3>
+            <div class="hud-players">
+              <h4>Players</h4>
               <Show when={gameStore.state?.players}>
-                {(players) => players().map((player: any, i: number) => (
-                  <div
-                    class={`player-summary ${
-                      i === gameStore.currentPlayer ? "current" : ""
-                    }`}
-                  >
-                    <span
-                      class="color-dot"
-                      style={{
-                        "background-color": getPlayerColorCSS(player.color),
-                      }}
-                    />
-                    <span class="name">{player.name}</span>
-                    <span class="vp">{getVictoryPoints(i)} VP</span>
+                {(players) => (
+                  <div class="players-list">
+                    {players().map((player: any, i: number) => (
+                      <div
+                        class="player-card-item"
+                        classList={{
+                          "is-current-turn": i === gameStore.currentPlayer,
+                        }}
+                        style={{ "--player-color": getPlayerColorCSS(player.color) }}
+                      >
+                        <div class="player-card-left">
+                          <div class="player-color-indicator" />
+                          <div class="player-card-info">
+                            <span class="player-card-name">{player.name}</span>
+                            <Show when={i === gameStore.currentPlayer}>
+                              <span class="turn-tag">Playing</span>
+                            </Show>
+                          </div>
+                        </div>
+                        <div class="player-card-right">
+                          <div class="vp-display">
+                            <span class="vp-icon">🏆</span>
+                            <span class="vp-value">{getVictoryPoints(i)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </Show>
             </div>
           </div>
