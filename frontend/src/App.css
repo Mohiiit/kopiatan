@@ -3157,6 +3157,85 @@ header p {
   50% { transform: translateY(-4px); }
 }
 
+/* Build Actions */
+.build-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.build-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  border-radius: var(--radius-sm);
+  color: #2ecc71;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.build-icon {
+  font-size: 1rem;
+}
+
+/* Bank Trade Panel */
+.bank-trade-panel {
+  position: relative;
+}
+
+.bank-trade-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--space-xs);
+  padding: var(--space-sm);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.bank-trade-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background: rgba(52, 152, 219, 0.1);
+  border: 1px solid rgba(52, 152, 219, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.bank-trade-option:hover {
+  background: rgba(52, 152, 219, 0.25);
+  border-color: rgba(52, 152, 219, 0.5);
+  transform: translateY(-1px);
+}
+
+.trade-give {
+  color: var(--color-coral);
+  font-weight: 600;
+}
+
+.trade-arrow {
+  color: var(--color-text-secondary);
+  font-size: 1.1rem;
+}
+
+.trade-receive {
+  color: #2ecc71;
+  font-weight: 600;
+}
+
 /* Resources Section */
 .hud-resources {
   background: var(--color-bg-elevated);

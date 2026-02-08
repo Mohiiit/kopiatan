@@ -190,6 +190,54 @@ function PlayerCard(props: {
 }
 
 // Action button with loading state
+// Bank trade panel - allows 4:1 (or port rate) resource swaps
+function BankTradePanel(props: { tradeOptions: any[]; onTrade: (action: any) => void }) {
+  const [expanded, setExpanded] = createSignal(false);
+
+  const resourceIcons: Record<string, string> = {
+    Brick: "🧱", Lumber: "🪵", Ore: "🪨", Grain: "🌾", Wool: "🐑"
+  };
+
+  // Group trades by what you give
+  const trades = createMemo(() => {
+    return props.tradeOptions.map((a: any) => {
+      const t = a.MaritimeTrade;
+      return { give: t.give, give_count: t.give_count, receive: t.receive, action: a };
+    });
+  });
+
+  return (
+    <div class="bank-trade-panel">
+      <ActionButton
+        onClick={() => setExpanded(!expanded())}
+        variant="primary"
+        icon="🏦"
+      >
+        Bank Trade ({trades().length})
+      </ActionButton>
+      <Show when={expanded()}>
+        <div class="bank-trade-options">
+          <For each={trades()}>
+            {(trade) => (
+              <button
+                class="bank-trade-option"
+                onClick={() => {
+                  props.onTrade(trade.action);
+                  setExpanded(false);
+                }}
+              >
+                <span class="trade-give">{trade.give_count}x {resourceIcons[trade.give] || trade.give}</span>
+                <span class="trade-arrow">→</span>
+                <span class="trade-receive">1x {resourceIcons[trade.receive] || trade.receive}</span>
+              </button>
+            )}
+          </For>
+        </div>
+      </Show>
+    </div>
+  );
+}
+
 function ActionButton(props: {
   onClick: () => void;
   disabled?: boolean;
@@ -250,6 +298,31 @@ export const MultiplayerHUD: Component<MultiplayerHUDProps> = (props) => {
   const canEndTurn = createMemo(() =>
     props.validActions.some((a: any) => a === "EndTurn" || (typeof a === "object" && "EndTurn" in a))
   );
+
+  const canBuyDevCard = createMemo(() =>
+    props.validActions.some((a: any) => a === "BuyDevelopmentCard" || (typeof a === "object" && "BuyDevelopmentCard" in a))
+  );
+
+  const canBuildRoad = createMemo(() =>
+    props.validActions.some((a: any) => typeof a === "object" && "BuildRoad" in a)
+  );
+
+  const canBuildSettlement = createMemo(() =>
+    props.validActions.some((a: any) => typeof a === "object" && "BuildSettlement" in a)
+  );
+
+  const canBuildCity = createMemo(() =>
+    props.validActions.some((a: any) => typeof a === "object" && "BuildCity" in a)
+  );
+
+  // Maritime trade: check if any 4:1 (or port rate) trade is available
+  const canBankTrade = createMemo(() =>
+    props.validActions.some((a: any) => typeof a === "object" && "MaritimeTrade" in a)
+  );
+
+  const bankTradeOptions = createMemo(() => {
+    return props.validActions.filter((a: any) => typeof a === "object" && "MaritimeTrade" in a);
+  });
 
   // Get my resources
   const myResources = createMemo(() => {
@@ -411,6 +484,43 @@ export const MultiplayerHUD: Component<MultiplayerHUDProps> = (props) => {
           </Show>
 
           <Show when={canEndTurn()}>
+            {/* Build status indicators */}
+            <div class="build-actions">
+              <Show when={canBuildRoad()}>
+                <div class="build-hint">
+                  <span class="build-icon">🛤️</span>
+                  <span>Road available - click board</span>
+                </div>
+              </Show>
+              <Show when={canBuildSettlement()}>
+                <div class="build-hint">
+                  <span class="build-icon">🏠</span>
+                  <span>Settlement available - click board</span>
+                </div>
+              </Show>
+              <Show when={canBuildCity()}>
+                <div class="build-hint">
+                  <span class="build-icon">🏙️</span>
+                  <span>City upgrade available - click board</span>
+                </div>
+              </Show>
+              <Show when={canBuyDevCard()}>
+                <ActionButton
+                  onClick={() => props.onAction("BuyDevelopmentCard")}
+                  variant="primary"
+                  icon="🃏"
+                >
+                  Buy Dev Card
+                </ActionButton>
+              </Show>
+              <Show when={canBankTrade()}>
+                <BankTradePanel
+                  tradeOptions={bankTradeOptions()}
+                  onTrade={(action: any) => props.onAction(action)}
+                />
+              </Show>
+            </div>
+
             <ActionButton
               onClick={() => props.onAction("EndTurn")}
               variant="secondary"

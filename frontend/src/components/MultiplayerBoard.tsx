@@ -78,6 +78,12 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
       .map((a: any) => a.PlaceInitialRoad || a.BuildRoad);
   });
 
+  const validCities = createMemo(() => {
+    return props.validActions
+      .filter((a: any) => typeof a === "object" && "BuildCity" in a)
+      .map((a: any) => a.BuildCity);
+  });
+
   const validRobberHexes = createMemo(() => {
     return props.validActions
       .filter((a: any) => typeof a === "object" && "MoveRobber" in a)
@@ -234,6 +240,8 @@ export const MultiplayerBoard: Component<MultiplayerBoardProps> = (props) => {
     if (phase.type === "setup" || phase.type === "main") {
       if (validSettlements().length > 0) {
         renderer.highlightVertices(validSettlements(), 0x00ff00);
+      } else if (validCities().length > 0) {
+        renderer.highlightVertices(validCities(), 0xffd700);  // Gold for city upgrades
       } else if (validRoads().length > 0) {
         renderer.highlightEdges(validRoads(), 0x00ff00);
       }
